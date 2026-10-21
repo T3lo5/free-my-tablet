@@ -2,6 +2,13 @@
 
 Everything that changed, newest first.
 
+## v1.2
+
+- **The list of all the apps can be used with a widget on the screen.** The widget and the note field step aside
+  while the list is open (they were on top of it, and the apps under them could not be tapped).
+- The build takes the version from the tag, so the app knows when there is a new one (before, the version was
+  fixed in the manifest and the app could never see an update).
+
 ## v1.1
 
 - **The app updates itself.** It looks for a new release on its own and says so on the home screen; in the
