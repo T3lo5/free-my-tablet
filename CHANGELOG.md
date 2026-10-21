@@ -2,6 +2,18 @@
 
 Everything that changed, newest first.
 
+## v1.11
+
+- **The widget has a size** (small, medium, big), in the settings. The slot follows the size the widget asks
+  for, so a widget is never cut.
+- **The space screen shows every app** (the biggest first), not only eight.
+- **The reading mode**: a black screen with the clock small in the corner and the apps, nothing else (the
+  theme "Leitura"). Good for reading at night.
+- **"Open today's note"**: opens the Obsidian with the file of the day's quick note, in the folder you chose.
+- **The Obsidian address was wrong**: the slashes of the path were being escaped, so a note inside a folder
+  never opened (the widget and the vault search had the same problem).
+- The theme "read" was being ignored (the value of the theme only knew "light" and "dark").
+
 ## v1.10
 
 - **The notes of the vault are read right.** The app was asking the system for the id of the tree in a

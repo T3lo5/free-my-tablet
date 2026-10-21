@@ -342,6 +342,7 @@ public class HomeActivity extends Activity {
                 prefsVersion = Prefs.version;
                 home.reload();
                 styleNote();     // the note field takes the color of the theme
+                applyMode();
             }
             home.resume();
         }
@@ -372,6 +373,14 @@ public class HomeActivity extends Activity {
     }
 
     /** Puts the widget of the slot on the home screen (the person chose it in the settings). */
+    /** The reading mode: the note field and the widget step aside (only the clock and the apps). */
+    private void applyMode() {
+        boolean read = home != null && home.reading();
+        boolean open = home != null && home.isOverlayOpen();
+        if (note != null) note.setVisibility(read || open ? View.GONE : View.VISIBLE);
+        if (widgetView != null) widgetView.setVisibility(read || open ? View.GONE : View.VISIBLE);
+    }
+
     private void showWidget() {
         int id = Prefs.widgetId();
         if (id == 0) {
@@ -383,6 +392,13 @@ public class HomeActivity extends Activity {
             Prefs.setWidgetId(0);
             return;
         }
+        // The size the widget asks for (the slot never squeezes it).
+        try {
+            Bundle options = AppWidgetManager.getInstance(this).getAppWidgetOptions(id);
+            int wanted = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 0);
+            if (wanted > 0 && home != null) home.setWidgetHeight(wanted);
+        } catch (RuntimeException ignored) {
+        }
         if (widgetView == null) {
             widgetView = host.createView(this, id, info);
             widgetView.setAppWidget(id, info);
@@ -392,6 +408,7 @@ public class HomeActivity extends Activity {
             widgetView.setAppWidget(id, info);
         }
         widgetView.setVisibility(View.VISIBLE);
+        applyMode();
         root.requestLayout();
         NotesWidget.refresh(this);   // the notes may have changed since the last time
     }

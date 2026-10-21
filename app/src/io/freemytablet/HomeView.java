@@ -54,6 +54,9 @@ public class HomeView extends View implements Choreographer.FrameCallback {
     private int perRow = 5;
     private final RectF noteRect = new RectF();
     private final RectF widgetRect = new RectF();
+
+    /** The height the widget asked for (0 = the one from the settings). */
+    private int widgetHeight;
     private final RectF searchRect = new RectF();
 
     // All apps (the overlay)
@@ -195,7 +198,7 @@ public class HomeView extends View implements Choreographer.FrameCallback {
         noteH = dp(58);
         noteTop = h - (portrait ? dp(132) : dp(104));
         noteRect.set(pad, noteTop, w - pad, noteTop + noteH);
-        widgetRect.set(pad, dp(140), w - pad, dp(140) + dp(140));
+        layoutWidget();   // the slot of the widget
         clock.setTextSize(clockSize);
         label.setTextSize(labelSize);
         date.setTextSize(dp(14));
@@ -207,7 +210,9 @@ public class HomeView extends View implements Choreographer.FrameCallback {
     private void buildBackground() {
         if (w <= 0 || h <= 0) return;   // the view has no size yet (right after the app starts)
         String theme = Prefs.theme();
-        if ("light".equals(theme)) {
+        if ("read".equals(theme)) {
+            Sky.reading(palette);
+        } else if ("light".equals(theme)) {
             Sky.paper(palette);   // warm paper, for reading
         } else if ("dark".equals(theme)) {
             Sky.dark(palette);
@@ -237,12 +242,32 @@ public class HomeView extends View implements Choreographer.FrameCallback {
         return widgetRect;
     }
 
+    /** The widget asked for another height (the person resized it in the system). */
+    public void setWidgetHeight(int dp) {
+        if (dp == widgetHeight) return;
+        widgetHeight = dp;
+        layoutWidget();
+        invalidate();
+    }
+
+    /** Puts the slot back in place (the height of the widget changed). */
+    private void layoutWidget() {
+        float pad = dp(portrait() ? 24 : 32);
+        // The size the person chose, or the one the widget asks for when it is bigger (the widget is not cut).
+        int wh = Math.max(Prefs.widgetSize(), widgetHeight);
+        widgetRect.set(pad, dp(140), w - pad, dp(140) + dp(wh));
+    }
+
     // MARK: - Drawing
 
     @Override protected void onDraw(Canvas c) {
         c.drawRect(0, 0, w, h, bg);
         c.drawRect(0, 0, w, h, glow);
         drawClock(c);
+        if (reading()) {     // the reading mode: the clock and the apps, nothing else
+            drawFavorites(c);
+            return;
+        }
         drawWeather(c);
         drawFavorites(c);
         drawNote(c);
@@ -254,10 +279,23 @@ public class HomeView extends View implements Choreographer.FrameCallback {
     private void drawClock(Canvas c) {
         float x = dp(24);
         float y = dp(portrait() ? 92 : 76);
+        if (reading()) {
+            // The reading mode: a small clock, dim, up in the corner.
+            clock.setTextSize(dp(22));
+            clock.setColor(0x66FFFFFF);
+            c.drawText(clockText, x, dp(48), clock);
+            clock.setTextSize(clockSize);
+            return;
+        }
         clock.setColor(Ui.ink());
         c.drawText(clockText, x, y, clock);
         date.setColor(Ui.inkSoft());
         c.drawText(dateText, x, y + dp(26), date);
+    }
+
+    /** Whether the theme is the reading mode (a black screen, only the clock and the apps). */
+    public boolean reading() {
+        return "read".equals(Prefs.theme());
     }
 
     /** The weather card, at the top right: the symbol, the temperature and the city. */

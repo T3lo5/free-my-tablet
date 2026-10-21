@@ -53,7 +53,8 @@ final class Space {
                 return Long.compare(b.total(), a.total());
             }
         });
-        return apps.size() > limit ? apps.subList(0, limit) : apps;
+        if (limit > 0 && apps.size() > limit) return apps.subList(0, limit);
+        return apps;
     }
 
     /** The free space and the total, in bytes. */

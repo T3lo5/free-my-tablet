@@ -90,8 +90,7 @@ final class VaultSearch {
 
     /** Opens a note in Obsidian. */
     static void open(Activity a, Vault.Note note) {
-        Intent intent = new Intent(Intent.ACTION_VIEW,
-                Uri.parse("obsidian://open?vault=" + Uri.encode(note.vault) + "&file=" + Uri.encode(note.path)));
+        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(Vault.obsidianUri(note.vault, note.path)));
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         try {
             a.startActivity(intent);

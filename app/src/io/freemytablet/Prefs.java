@@ -67,10 +67,10 @@ final class Prefs {
 
     static void setTemperature(String v) { put("temperature", v); }
 
-    /** "auto" (dark from sunset to sunrise), "light" or "dark". */
+    /** "auto" (the sky follows the sun), "light" (the paper), "dark" (the night) or "read" (the black screen). */
     static String theme() {
         String v = sp().getString("theme", "auto");
-        return v.equals("light") || v.equals("dark") ? v : "auto";
+        return v.equals("light") || v.equals("dark") || v.equals("read") ? v : "auto";
     }
 
     static void setTheme(String v) { put("theme", v); }
@@ -187,6 +187,10 @@ final class Prefs {
     /** The id of the widget in the slot (0 when there is none). */
     static int widgetId() { return sp().getInt("widgetId", 0); }
     static void setWidgetId(int id) { put("widgetId", id); }
+
+    /** The height of the widget's slot, in dp (0 = the height the widget asks for). */
+    static int widgetSize() { return sp().getInt("widgetSize", 140); }
+    static void setWidgetSize(int dp) { put("widgetSize", dp); }
 
     // MARK: - The vault (the Obsidian folder for the quick note)
 

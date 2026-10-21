@@ -148,11 +148,12 @@ public class SettingsActivity extends Activity {
         static final int MAIN = 0, FAVORITES = 1, OFF_APPS = 2, SPACE = 3, TALKERS = 4, UPDATES = 5, PANEL = 6;
 
         /** The lines of the main screen, in the order they are shown. */
-        static final int HOME = 0, ON_SCREEN = 1, VAULT = 2, NOTE_FOLDER = 3, VAULT_SEARCH = 4, WEATHER = 5,
-                WIDGET = 6, SYNC = 7, SPACE_ROW = 8, PANEL_ROW = 9, TALKERS_ROW = 10, UPDATES_ROW = 11,
-                EXPORT = 12, OFF = 13, LANGUAGE = 14, THEME = 15, ABOUT = 16;
-        static final int[] ROWS = {HOME, ON_SCREEN, VAULT, NOTE_FOLDER, VAULT_SEARCH, WEATHER, WIDGET, SYNC, SPACE_ROW,
-                PANEL_ROW, TALKERS_ROW, UPDATES_ROW, EXPORT, OFF, LANGUAGE, THEME, ABOUT};
+        static final int HOME = 0, ON_SCREEN = 1, VAULT = 2, NOTE_FOLDER = 3, TODAY_NOTE = 4, VAULT_SEARCH = 5,
+                WEATHER = 6, WIDGET = 7, WIDGET_SIZE = 8, SYNC = 9, SPACE_ROW = 10, PANEL_ROW = 11,
+                TALKERS_ROW = 12, UPDATES_ROW = 13, EXPORT = 14, OFF = 15, LANGUAGE = 16, THEME = 17, ABOUT = 18;
+        static final int[] ROWS = {HOME, ON_SCREEN, VAULT, NOTE_FOLDER, TODAY_NOTE, VAULT_SEARCH, WEATHER, WIDGET,
+                WIDGET_SIZE, SYNC, SPACE_ROW, PANEL_ROW, TALKERS_ROW, UPDATES_ROW, EXPORT, OFF, LANGUAGE, THEME,
+                ABOUT};
 
         SettingsView(Activity a) {
             super(a);
@@ -221,9 +222,11 @@ public class SettingsActivity extends Activity {
                 case ON_SCREEN: return Ui.tr("Apps na tela", "Apps on the home screen");
                 case VAULT: return Ui.tr("Pasta do Obsidian", "Obsidian folder");
                 case NOTE_FOLDER: return Ui.tr("Pasta da nota", "Note folder");
+                case TODAY_NOTE: return Ui.tr("Abrir a nota de hoje", "Open today's note");
                 case VAULT_SEARCH: return Ui.tr("Buscar no vault", "Search the vault");
                 case WEATHER: return Ui.tr("Card do tempo", "Weather card");
                 case WIDGET: return Ui.tr("Widget", "Widget");
+                case WIDGET_SIZE: return Ui.tr("Tamanho do widget", "Widget size");
                 case SYNC: return Ui.tr("Sincronizar", "Sync");
                 case SPACE_ROW: return Ui.tr("Espaço", "Space");
                 case PANEL_ROW: return Ui.tr("Tablet", "Tablet");
@@ -247,9 +250,13 @@ public class SettingsActivity extends Activity {
                 case VAULT: return Vault.ready(activity) ? Ui.tr("Escolhida", "Chosen") : Ui.tr("Escolher", "Choose");
                 case NOTE_FOLDER: return Prefs.noteFolder().isEmpty() ? Ui.tr("A raiz do vault", "The vault root")
                         : Prefs.noteFolder();
+                case TODAY_NOTE: return Ui.tr("No Obsidian", "In Obsidian");
                 case VAULT_SEARCH: return Ui.tr("Abrir", "Open");
                 case WEATHER: return Prefs.weatherCard() ? Ui.tr("Ligado", "On") : Ui.tr("Desligado", "Off");
                 case WIDGET: return Prefs.widgetId() == 0 ? Ui.tr("Escolher", "Choose") : Ui.tr("Colocado", "Placed");
+                case WIDGET_SIZE: return Prefs.widgetId() == 0 ? Ui.tr("—", "—")
+                        : (Prefs.widgetSize() <= 100 ? Ui.tr("Pequeno", "Small")
+                        : Prefs.widgetSize() >= 200 ? Ui.tr("Grande", "Big") : Ui.tr("Médio", "Medium"));
                 case SYNC: return Ui.tr("Ajustar", "Set up");
                 case SPACE_ROW: return Ui.tr("O que ocupa o tablet", "What is using the tablet");
                 case PANEL_ROW: return Ui.tr("Memória, CPU e bateria", "Memory, CPU and battery");
@@ -265,7 +272,7 @@ public class SettingsActivity extends Activity {
                 case THEME: {
                     String t = Prefs.theme();
                     return "light".equals(t) ? Ui.tr("Claro", "Light") : "dark".equals(t) ? Ui.tr("Escuro", "Dark")
-                            : Ui.tr("Automático", "Automatic");
+                            : "read".equals(t) ? Ui.tr("Leitura", "Reading") : Ui.tr("Automático", "Automatic");
                 }
                 default: return "";
             }
@@ -374,6 +381,8 @@ public class SettingsActivity extends Activity {
             c.drawText(Ui.tr("Espaço", "Space"), dp(20), dp(44), title);
             float y = top - scroll;
             for (String line : spaceLines) {
+                // Only the lines that are on the screen are drawn (the list can be long).
+                if (y > bottom + rowH || y + rowH < top) { y += rowH; continue; }
                 rowTitle.setColor(0xFFFFFFFF);
                 c.drawText(line, dp(20), y + dp(30), rowTitle);
                 y += rowH;
@@ -461,6 +470,7 @@ public class SettingsActivity extends Activity {
                 case ON_SCREEN: openChecklist(FAVORITES); break;
                 case VAULT: Vault.pick(activity); break;
                 case NOTE_FOLDER: askNoteFolder(); break;
+                case TODAY_NOTE: openTodayNote(); break;
                 case VAULT_SEARCH: VaultSearch.show(activity); break;
                 case EXPORT: askExport(); break;
                 case WEATHER:
@@ -468,6 +478,7 @@ public class SettingsActivity extends Activity {
                     reload();
                     break;
                 case WIDGET: askWidget(); break;
+                case WIDGET_SIZE: askWidgetSize(); break;
                 case SYNC: askSync(); break;
                 case SPACE_ROW: openSpace(); break;
                 case PANEL_ROW: openPanel(); break;
@@ -665,7 +676,10 @@ public class SettingsActivity extends Activity {
                     long[] free = Space.free(adb);
                     lines.add(Ui.tr("Livre: ", "Free: ") + size(free[0]) + " de " + size(free[1]));
                     lines.add("");
-                    for (Space.App app : Space.biggest(adb, 8)) {
+                    List<Space.App> biggest = Space.biggest(adb, 0);   // all of them, the biggest first
+                    lines.add(Ui.tr("O que ocupa o tablet (", "What is using the tablet (") + biggest.size()
+                            + Ui.tr(" apps):", " apps):"));
+                    for (Space.App app : biggest) {
                         lines.add(size(app.total()) + "   " + app.pkg);
                     }
                     lines.add("");
@@ -718,6 +732,27 @@ public class SettingsActivity extends Activity {
                     notice(text);
                 });
             }, "space-clean").start();
+        }
+
+        /** Opens the Obsidian with the note of the day (the file the quick note writes). */
+        private void openTodayNote() {
+            String vault = Vault.vaultName(activity);
+            if (vault.isEmpty()) {
+                notice(Ui.tr("Escolha a pasta do Obsidian primeiro.", "Choose the Obsidian folder first."));
+                return;
+            }
+            String file = Ui.tr("Nota rápida ", "Quick note ")
+                    + new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(new java.util.Date())
+                    + ".md";
+            String folder = Prefs.noteFolder();
+            String path = folder.isEmpty() ? file : folder + "/" + file;
+            Intent intent = new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(Vault.obsidianUri(vault, path)));
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            try {
+                activity.startActivity(intent);
+            } catch (RuntimeException e) {
+                notice(Ui.tr("Não consegui abrir o Obsidian.", "I couldn't open Obsidian."));
+            }
         }
 
         /** The folder inside the vault where the quick note goes. */
@@ -808,6 +843,24 @@ public class SettingsActivity extends Activity {
                             Widgets.pick(activity, REQ_WIDGET);
                         }
                     })
+                    .show();
+        }
+
+        /** The height of the widget's slot. */
+        private void askWidgetSize() {
+            if (Prefs.widgetId() == 0) {
+                notice(Ui.tr("Escolha um widget primeiro.", "Choose a widget first."));
+                return;
+            }
+            final int[] sizes = {100, 140, 200};
+            String[] names = {Ui.tr("Pequeno", "Small"), Ui.tr("Médio", "Medium"), Ui.tr("Grande", "Big")};
+            new AlertDialog.Builder(activity)
+                    .setTitle(Ui.tr("Tamanho do widget", "Widget size"))
+                    .setItems(names, (d, which) -> {
+                        Prefs.setWidgetSize(sizes[which]);
+                        reload();
+                    })
+                    .setNegativeButton(Ui.tr("Cancelar", "Cancel"), null)
                     .show();
         }
 
@@ -958,8 +1011,9 @@ public class SettingsActivity extends Activity {
         }
 
         private void askTheme() {
-            final String[] options = {"auto", "light", "dark"};
-            String[] names = {Ui.tr("Automático", "Automatic"), Ui.tr("Claro", "Light"), Ui.tr("Escuro", "Dark")};
+            final String[] options = {"auto", "light", "dark", "read"};
+            String[] names = {Ui.tr("Automático", "Automatic"), Ui.tr("Claro", "Light"), Ui.tr("Escuro", "Dark"),
+                    Ui.tr("Leitura", "Reading")};
             new AlertDialog.Builder(activity).setTitle(Ui.tr("Tema", "Theme"))
                     .setItems(names, (d, which) -> {
                         Prefs.setTheme(options[which]);

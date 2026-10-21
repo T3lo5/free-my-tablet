@@ -72,8 +72,7 @@ public class NotesWidget extends AppWidgetProvider {
 
     /** Opens a note in Obsidian. */
     private static PendingIntent open(Context c, Vault.Note note, int index) {
-        Intent intent = new Intent(Intent.ACTION_VIEW,
-                Uri.parse("obsidian://open?vault=" + Uri.encode(note.vault) + "&file=" + Uri.encode(note.path)));
+        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(Vault.obsidianUri(note.vault, note.path)));
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         return PendingIntent.getActivity(c, index, intent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);

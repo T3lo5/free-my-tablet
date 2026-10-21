@@ -82,6 +82,11 @@ final class Sky {
         out.set(0xE8E2D6, 0xF3EEE4, 0xFFFBF2);
     }
 
+    /** The reading mode: a black screen, only the clock and the apps. */
+    static void reading(Palette out) {
+        out.set(0x000000, 0x000000, 0x000000);
+    }
+
     /** The night palette, whatever the hour (the "dark" theme). */
     static void dark(Palette out) {
         out.set(NIGHT[0], NIGHT[1], NIGHT[2]);

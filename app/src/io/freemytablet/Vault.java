@@ -137,6 +137,27 @@ final class Vault {
         return null;
     }
 
+    /**
+     * The address that opens a note of the vault in the Obsidian. The slashes of the path stay slashes: the
+     * Obsidian does not read a file whose path comes escaped.
+     */
+    static String obsidianUri(String vault, String path) {
+        return "obsidian://open?vault=" + Uri.encode(vault) + "&file=" + Uri.encode(path).replace("%2F", "/");
+    }
+
+    /** The name of the vault (the folder's name, what Obsidian calls the vault), or "". */
+    static String vaultName(Context c) {
+        String tree = Prefs.vault();
+        if (tree.isEmpty()) return "";
+        try {
+            String id = DocumentsContract.getTreeDocumentId(Uri.parse(tree));
+            int slash = id.lastIndexOf('/');
+            return slash < 0 ? id : id.substring(slash + 1);
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
     /** Where the vault is on the disk ("/storage/emulated/0/Documents/Obsidian/pos-coders"), or "". */
     static String path(Context c) {
         String tree = Prefs.vault();
