@@ -39,7 +39,10 @@ public class ApkProvider extends ContentProvider {
     }
 
     @Override public ParcelFileDescriptor openFile(Uri uri, String mode) throws FileNotFoundException {
-        if (file == null || !"r".equals(mode)) throw new FileNotFoundException("no APK to read");
+        // The installer asks for the file with a few different modes ("r", "rt"...): all of them are read.
+        if (file == null) throw new FileNotFoundException("no APK to read");
+        if (mode != null && !mode.contains("r")) throw new FileNotFoundException("read only");
+        AppLog.w("the installer is reading the APK (" + file.length() + " bytes)");
         return ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY);
     }
 

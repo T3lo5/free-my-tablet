@@ -2,6 +2,12 @@
 
 Everything that changed, newest first.
 
+## v1.3
+
+- **The update works end to end.** The installer could not read the downloaded APK (the provider was too strict
+  about the mode it was asked for): the update now installs without a problem.
+- The notes of the release lose their markdown marks, so they read as text.
+
 ## v1.2
 
 - **The list of all the apps can be used with a widget on the screen.** The widget and the note field step aside

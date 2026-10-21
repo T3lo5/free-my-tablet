@@ -458,8 +458,12 @@ public class SettingsActivity extends Activity {
                     lines.add(Ui.tr("Tamanho: ", "Size: ") + size(info.size));
                     lines.add("");
                     for (String line : info.notes.split("\n")) {
-                        if (line.trim().isEmpty()) continue;
-                        lines.add(line.trim());
+                        String text = line.trim();
+                        if (text.isEmpty()) continue;
+                        // The notes come from the markdown of the changelog: the marks are not needed here.
+                        text = text.replace("**", "").replace("`", "");
+                        if (text.startsWith("- ")) text = text.substring(2);
+                        lines.add(text);
                     }
                     lines.add("");
                     lines.add(Ui.tr("Toque em “Atualizar” para baixar e instalar.",
