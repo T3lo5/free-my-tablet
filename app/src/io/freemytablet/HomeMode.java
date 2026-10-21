@@ -63,6 +63,7 @@ final class HomeMode {
         "com.samsung.android.rubin.app",          // Customization Service
         "com.sec.android.app.chromecustomizations",   // ChromeCustomizations (the menu it adds to Chrome)
         "com.sec.android.usermanual",             // User Manual
+        "com.sec.android.diagmonagent",           // Diagnostics (1,7 GB here, and it reports the use of the tablet)
         "com.sec.android.app.servicemodeapp",     // Service mode
         "com.sec.android.app.factorykeystring",
         // Microsoft (the Office suite and OneDrive, on some tablets)
@@ -95,6 +96,10 @@ final class HomeMode {
         "com.google.android.videos",                   // Google Play Movies
         "com.google.android.youtube.tvmusic",           // YouTube Music
         "com.samsung.android.app.shealth",             // Samsung Health
+        "com.google.android.tts",                      // the text-to-speech engine (560 MB here)
+        "com.google.android.apps.maps",                // Google Maps (preinstalled)
+        "com.google.android.apps.docs",                // Google Drive
+        "com.sec.android.daemonapp",                   // Samsung Weather
         "com.samsung.android.app.arzone",              // AR Zone
         "com.samsung.android.aremoji",                 // AR Emoji
         "com.samsung.android.app.gamehome",            // Game Launcher
@@ -561,7 +566,8 @@ final class HomeMode {
                 }
                 notice(app, turned == 0
                         ? Ui.tr("Os apps que você marcou estão assim.", "The apps you marked are like that.")
-                        : Ui.tr(turned + " apps desligados (ou religados).", turned + " apps turned off (or back on)."));
+                        : Ui.tr(turned + " apps desligados (ou religados).", turned + " apps turned off (or back on).")
+                        );
             } catch (Exception e) {
                 notice(app, Ui.tr("Não consegui mudar os apps: o ADB do tablet não está aberto "
                                 + "(\"adb tcpip 5555\" pelo computador).",

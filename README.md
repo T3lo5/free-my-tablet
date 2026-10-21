@@ -32,21 +32,27 @@ nothing is ever uninstalled.
 
 ## What you get
 
-- **Only your things.** Not a grid of every app: the clock, the weather, the apps you picked (Obsidian, YouTube,
-  Termux, your reader, the webapps you installed), and a small button for the rest.
+- **Only your things.** Not a grid of every app: the clock, the weather (the temperature, the symbol and the
+  city) and the apps you picked (Obsidian, YouTube, Termux, your reader, the webapps you installed), and a
+  small button for the rest.
 - **A quick note.** Write on the home screen without opening anything: the note goes straight into your
   Obsidian vault, as a Markdown file, one per day.
 - **A widget.** Pick it in the system's own widget picker: our widget shows the last notes of your vault and a
   tap opens them in Obsidian. Every other widget of the tablet works too.
 - **A sync button.** The git pull and the copy over your vault, in one tap: no Termux, no copying folders by
   hand. (Termux does the work — that is where git is.)
+- **A space report.** It shows what is using your tablet (the apps, the cache, the notifications) and clears
+  the cache of everything with one tap. On a tablet with 2 GB of RAM, that is the difference between slow and
+  fast.
 - **Nothing extra.** No ads, no sponsored rows, no promo widgets, no analytics, no account.
 - **Light by day, dark by night.** The screen follows the real sunrise and sunset where you are (or you can
   choose the light or the dark one).
 - **The bloat turned off.** The apps the manufacturer preinstalled (Microsoft Office, Facebook, the Galaxy Store,
-  Bixby…) can be switched off in one tap. They are never uninstalled: *Original* brings them all back.
+  Bixby, Samsung's diagnostics…) can be switched off in one tap. They are never uninstalled: *Original* brings
+  them all back.
 - **Safe.** No root. Nothing is uninstalled. One button brings back the factory home screen.
-- **Light on an old tablet.** Drawn by hand on one Canvas, no libraries, a 1.1 MB APK.
+- **Light on an old tablet.** Drawn by hand on one Canvas, no libraries, a 1.9 MB APK, **0.0% of the CPU** at
+  rest and 7 MB of memory (the stock launcher: 46 MB, and it never stops drawing).
 
 ## Install
 
@@ -108,6 +114,8 @@ The settings open from the app's icon (in *All apps*, the button at the bottom r
 | *Weather card* | The temperature on the home screen, on or off |
 | *Widget* | The widget in the slot (the system's own picker) |
 | *Sync* | The git folder in Termux and the command that pulls |
+| *Space* | What is using the tablet, and the buttons to free some of it |
+| *Who talks to you* | The apps that send the most notifications (a tap opens the system screen) |
 | *Apps to turn off* | The preinstalled apps you never use (Bixby, Samsung Internet, the Play apps…) |
 | *Language* | Automatic, Português, English, Español |
 | *Theme* | Automatic (follows the sun), Light, Dark |
@@ -187,5 +195,6 @@ Every push is built by GitHub to make sure it compiles, and every tag publishes 
 
 [MIT](LICENSE). Fork it, change it, ship it.
 
-The research behind the choices — the complaints people have about tablets, and how to make one use less —
-is in [`docs/pesquisa.md`](docs/pesquisa.md) (in Portuguese, with the numbers measured on the tablet).
+The research behind the choices — the complaints people have about tablets, what the internet says about them,
+and how to make one use less — is in [`docs/pesquisa.md`](docs/pesquisa.md) (in Portuguese, with the numbers
+measured on a Galaxy Tab A 8.0).

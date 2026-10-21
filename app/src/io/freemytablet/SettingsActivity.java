@@ -21,6 +21,7 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * The settings (the app's own icon opens this): the switch between Free My Tablet and the tablet's original home
@@ -131,7 +132,7 @@ public class SettingsActivity extends Activity {
         private long lastFrame;
         private String statusText = "";
 
-        static final int MAIN = 0, FAVORITES = 1, OFF_APPS = 2;
+        static final int MAIN = 0, FAVORITES = 1, OFF_APPS = 2, SPACE = 3, TALKERS = 4;
 
         SettingsView(Activity a) {
             super(a);
@@ -195,6 +196,8 @@ public class SettingsActivity extends Activity {
             out.add(Ui.tr("Card do tempo", "Weather card"));
             out.add(Ui.tr("Widget", "Widget"));
             out.add(Ui.tr("Sincronizar", "Sync"));
+            out.add(Ui.tr("Espaço", "Space"));
+            out.add(Ui.tr("Quem fala com você", "Who talks to you"));
             out.add(Ui.tr("Apps para desligar", "Apps to turn off"));
             out.add(Ui.tr("Idioma", "Language"));
             out.add(Ui.tr("Tema", "Theme"));
@@ -214,13 +217,15 @@ public class SettingsActivity extends Activity {
                 case 3: return Prefs.weatherCard() ? Ui.tr("Ligado", "On") : Ui.tr("Desligado", "Off");
                 case 4: return Prefs.widgetId() == 0 ? Ui.tr("Escolher", "Choose") : Ui.tr("Colocado", "Placed");
                 case 5: return Ui.tr("Ajustar", "Set up");
-                case 6: return Ui.tr("Apps que você não usa", "Apps you don't use");
-                case 7: {
+                case 6: return Ui.tr("O que ocupa o tablet", "What is using the tablet");
+                case 7: return Ui.tr("Notificações", "Notifications");
+                case 8: return Ui.tr("Apps que você não usa", "Apps you don't use");
+                case 9: {
                     String l = Prefs.language();
                     return "auto".equals(l) ? Ui.tr("Automático", "Automatic")
                             : "pt".equals(l) ? "Português" : "es".equals(l) ? "Español" : "English";
                 }
-                case 8: {
+                case 10: {
                     String t = Prefs.theme();
                     return "light".equals(t) ? Ui.tr("Claro", "Light") : "dark".equals(t) ? Ui.tr("Escuro", "Dark")
                             : Ui.tr("Automático", "Automatic");
@@ -252,6 +257,10 @@ public class SettingsActivity extends Activity {
             c.drawColor(0xFF0B0F1E);
             if (screen == MAIN) {
                 drawMain(c);
+            } else if (screen == SPACE) {
+                drawSpace(c);
+            } else if (screen == TALKERS) {
+                drawTalkers(c);
             } else {
                 drawChecklist(c);
             }
@@ -280,6 +289,30 @@ public class SettingsActivity extends Activity {
         private String title() {
             return screen == OFF_APPS ? Ui.tr("Apps para desligar", "Apps to turn off")
                     : Ui.tr("Apps na tela", "Apps on the home screen");
+        }
+
+        /** Who talks the most. */
+        private void drawTalkers(Canvas c) {
+            title.setColor(0xFFFFFFFF);
+            c.drawText(Ui.tr("Quem fala com você", "Who talks to you"), dp(20), dp(44), title);
+            float y = top - scroll;
+            for (String line : talkerLines) {
+                rowTitle.setColor(0xFFFFFFFF);
+                c.drawText(line, dp(20), y + dp(30), rowTitle);
+                y += rowH;
+            }
+        }
+
+        /** The space: what is using the tablet. */
+        private void drawSpace(Canvas c) {
+            title.setColor(0xFFFFFFFF);
+            c.drawText(Ui.tr("Espaço", "Space"), dp(20), dp(44), title);
+            float y = top - scroll;
+            for (String line : spaceLines) {
+                rowTitle.setColor(0xFFFFFFFF);
+                c.drawText(line, dp(20), y + dp(30), rowTitle);
+                y += rowH;
+            }
         }
 
         /** The checklist: the apps, with a box on the ones that are picked. */
@@ -330,6 +363,8 @@ public class SettingsActivity extends Activity {
                 case MotionEvent.ACTION_UP: {
                     if (Math.abs(e.getY() - downY) > dp(12)) return true;   // it was a scroll
                     if (screen == MAIN) tapMain(e.getY());
+                    else if (screen == SPACE) tapSpace((int) ((e.getY() + scroll - top + rowH / 2) / rowH));
+                    else if (screen == TALKERS) tapTalker((int) ((e.getY() + scroll - top + rowH / 2) / rowH));
                     else tapChecklist(e.getY());
                     return true;
                 }
@@ -342,6 +377,8 @@ public class SettingsActivity extends Activity {
         private float maxScroll() {
             int items;
             if (screen == MAIN) items = rows.size();
+            else if (screen == SPACE) items = spaceLines.size();
+            else if (screen == TALKERS) items = talkerLines.size();
             else items = apps.size();
             return Math.max(0, items * rowH - (bottom - top));
         }
@@ -361,11 +398,128 @@ public class SettingsActivity extends Activity {
                     break;
                 case 4: askWidget(); break;
                 case 5: askSync(); break;
-                case 6: openChecklist(OFF_APPS); break;
-                case 7: askLanguage(); break;
-                case 8: askTheme(); break;
+                case 6: openSpace(); break;
+                case 7: openTalkers(); break;
+                case 8: openChecklist(OFF_APPS); break;
+                case 9: askLanguage(); break;
+                case 10: askTheme(); break;
                 default: askAbout(); break;
             }
+        }
+
+        /** Who talks the most: the notifications the tablet received, with a way to turn each one off. */
+        private void openTalkers() {
+            screen = TALKERS;
+            scroll = 0;
+            talkerLines = new ArrayList<>();
+            talkerLines.add(Ui.tr("Lendo…", "Reading…"));
+            invalidate();
+            new Thread(() -> {
+                List<String> lines = new ArrayList<>();
+                List<Notify.Talker> talkers = new ArrayList<>();
+                try (Adb adb = Adb.connect(activity, 30_000, null)) {
+                    talkers = Notify.top(adb, 8);
+                    for (Notify.Talker talker : talkers) {
+                        lines.add(talker.count + "   " + talker.pkg);
+                    }
+                    if (lines.isEmpty()) lines.add(Ui.tr("Nenhuma notificação.", "No notifications."));
+                    lines.add("");
+                    lines.add(Ui.tr("Toque num app para abrir a tela dele e desligar a notificação.",
+                            "Tap an app to open its screen and turn the notification off."));
+                } catch (Exception e) {
+                    lines.add(Ui.tr("Não consegui ler: o ADB do tablet não está aberto.",
+                            "I couldn't read: the tablet's ADB is not open."));
+                }
+                final List<Notify.Talker> finalTalkers = talkers;
+                activity.runOnUiThread(() -> {
+                    talkerLines = lines;
+                    talkerPkgs = new ArrayList<>();
+                    for (Notify.Talker talker : finalTalkers) talkerPkgs.add(talker.pkg);
+                    invalidate();
+                });
+            }, "notify").start();
+        }
+
+        private List<String> talkerLines = new ArrayList<>();
+        private List<String> talkerPkgs = new ArrayList<>();
+
+        /** A tap on an app that talks: the system's screen to turn its notification off. */
+        private void tapTalker(int index) {
+            if (index < 0 || index >= talkerPkgs.size()) return;
+            String pkg = talkerPkgs.get(index);
+            try {
+                activity.startActivity(Notify.settings(pkg));
+            } catch (RuntimeException e) {
+                AppLog.w("could not open the notification settings: " + e.getMessage());
+            }
+        }
+
+        /** The space: what is using the tablet, and the buttons to get some of it back. */
+        private void openSpace() {
+            screen = SPACE;
+            scroll = 0;
+            spaceLines = new ArrayList<>();
+            spaceLines.add(Ui.tr("Lendo…", "Reading…"));
+            invalidate();
+            new Thread(() -> {
+                List<String> lines = new ArrayList<>();
+                try (Adb adb = Adb.connect(activity, 30_000, null)) {
+                    long[] free = Space.free(adb);
+                    lines.add(Ui.tr("Livre: ", "Free: ") + size(free[0]) + " de " + size(free[1]));
+                    lines.add("");
+                    for (Space.App app : Space.biggest(adb, 8)) {
+                        lines.add(size(app.total()) + "   " + app.pkg);
+                    }
+                    lines.add("");
+                    lines.add(Ui.tr("Limpar o cache de todos os apps (não apaga nada seu)",
+                            "Clear the cache of every app (nothing of yours is lost)"));
+                    lines.add(Ui.tr("Limpar os apps que estão desligados (o que sobrou deles)",
+                            "Clear the apps that are turned off (what is left of them)"));
+                } catch (Exception e) {
+                    lines.add(Ui.tr("Não consegui ler o espaço: o ADB do tablet não está aberto.",
+                            "I couldn't read the space: the tablet's ADB is not open."));
+                }
+                activity.runOnUiThread(() -> {
+                    spaceLines = lines;
+                    invalidate();
+                });
+            }, "space").start();
+        }
+
+        private List<String> spaceLines = new ArrayList<>();
+
+        /** A size in a language people read ("1,2 GB"). */
+        private String size(long bytes) {
+            if (bytes >= 1024L * 1024 * 1024) return String.format(Locale.getDefault(), "%.1f GB", bytes / (1024.0 * 1024 * 1024));
+            if (bytes >= 1024L * 1024) return String.format(Locale.getDefault(), "%.0f MB", bytes / (1024.0 * 1024));
+            return String.format(Locale.getDefault(), "%.0f kB", bytes / 1024.0);
+        }
+
+        /** The two buttons of the space screen. */
+        private void tapSpace(int index) {
+            int total = spaceLines.size();
+            int first = total - 2;
+            if (index != first && index != first + 1) return;
+            new Thread(() -> {
+                String message;
+                try (Adb adb = Adb.connect(activity, 30_000, null)) {
+                    if (index == first) {
+                        Space.trimCaches(adb);
+                        message = Ui.tr("Cache limpo.", "Cache cleared.");
+                    } else {
+                        int done = Space.clearTurnedOff(adb, Space.turnedOff(adb));
+                        message = Ui.tr(done + " apps limpos.", done + " apps cleared.");
+                    }
+                } catch (Exception e) {
+                    message = Ui.tr("Não consegui: o ADB do tablet não está aberto.",
+                            "I couldn't: the tablet's ADB is not open.");
+                }
+                final String text = message;
+                activity.runOnUiThread(() -> {
+                    openSpace();
+                    notice(text);
+                });
+            }, "space-clean").start();
         }
 
         /** The widget: the system's own picker (with the previews), or taking the one that is there off. */
