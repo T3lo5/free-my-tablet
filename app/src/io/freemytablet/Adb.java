@@ -72,7 +72,8 @@ final class Adb implements Closeable {
             s.connect(new InetSocketAddress("127.0.0.1", 5555), 3000);
         } catch (IOException e) {
             s.close();
-            throw new IOException("debugging is off on the tablet (port 5555 closed)");
+            // The tablet's ADB only listens on the network after "adb tcpip 5555" (from the computer, over USB).
+            throw new IOException("debugging is off on the tablet (port 5555 closed: run \"adb tcpip 5555\" from the computer)");
         }
         s.setSoTimeout(10_000);
         Adb adb = new Adb(s);
@@ -108,6 +109,22 @@ final class Adb implements Closeable {
         } catch (IOException e) {
             adb.close();
             throw e;
+        }
+    }
+
+    /** Whether the tablet's own ADB is listening (after "adb tcpip 5555" from the computer). */
+    static boolean isOpen() {
+        Socket s = new Socket();
+        try {
+            s.connect(new InetSocketAddress("127.0.0.1", 5555), 1500);
+            return true;
+        } catch (IOException e) {
+            return false;
+        } finally {
+            try {
+                s.close();
+            } catch (IOException ignored) {
+            }
         }
     }
 

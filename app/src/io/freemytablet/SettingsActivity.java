@@ -3,6 +3,7 @@ package io.freemytablet;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -27,6 +28,8 @@ import java.util.List;
  * bottom that says what the switch is doing.
  */
 public class SettingsActivity extends Activity {
+    /** The system's own dialog to choose the home screen. */
+    static final int REQ_ROLE = 42;
     private SettingsView view;
 
     @Override protected void onCreate(Bundle savedInstanceState) {
@@ -35,6 +38,25 @@ public class SettingsActivity extends Activity {
         view = new SettingsView(this);
         setContentView(view);
         getWindow().setBackgroundDrawable(null);
+    }
+
+    /** The user picked the home screen in the system's dialog. */
+    @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode != REQ_ROLE) return;
+        if (resultCode != RESULT_OK) {
+            view.notice(Ui.tr("Você escolheu não trocar o Início.", "You chose not to change the home screen."));
+            return;
+        }
+        if (HomeMode.roleHeld(this)) {
+            // Ours: the switch goes on (and turns the apps off, when the ADB is open).
+            HomeMode.request(this, HomeMode.FREE);
+        } else {
+            // The tablet's own launcher: the way back is done.
+            HomeMode.markOriginal(this);
+            view.notice(Ui.tr("Modo original: o Início do tablet voltou.",
+                    "Original mode: the tablet's own home screen is back."));
+        }
     }
 
     @Override protected void onResume() {
@@ -325,25 +347,53 @@ public class SettingsActivity extends Activity {
         private void askSwitch() {
             JSONObject state = HomeMode.state(activity);
             boolean free = HomeMode.FREE.equals(state.optString("mode", HomeMode.ORIGINAL));
-            String message = free
-                    ? Ui.tr("Voltamos para o Início original do tablet e religamos os apps que foram desligados. "
-                            + "Nada é desinstalado.",
-                            "We go back to the tablet's original home screen and turn the apps back on. "
-                                    + "Nothing is uninstalled.")
-                    : Ui.tr("O Início vira o Free My Tablet: uma tela de início leve, sem propaganda, "
-                            + "e os apps que você não usa são desligados (nunca desinstalados). "
-                            + "O tablet vai pedir para permitir a depuração: aceite uma vez.",
-                            "The home screen becomes Free My Tablet: a light home screen, with no ads, "
-                                    + "and the apps you don't use are turned off (never uninstalled). "
-                                    + "The tablet will ask to allow debugging: accept it once.");
+            if (free) {
+                // Back to the tablet's own home screen: with the ADB open it is automatic, without it the system's
+                // own dialog asks the user to pick the tablet's launcher.
+                if (Adb.isOpen()) {
+                    HomeMode.request(activity, HomeMode.ORIGINAL);
+                    return;
+                }
+                Intent role = HomeMode.roleIntent(activity);
+                if (role != null) {
+                    new AlertDialog.Builder(activity)
+                            .setTitle(Ui.tr("Voltar ao Início original", "Go back to the original home screen"))
+                            .setMessage(Ui.tr("Escolha o Início do tablet (One UI Home) na janela do sistema.",
+                                    "Pick the tablet's own home screen (One UI Home) in the system's window."))
+                            .setNegativeButton(Ui.tr("Cancelar", "Cancel"), null)
+                            .setPositiveButton(Ui.tr("Escolher", "Choose"), (d, w) -> activity.startActivityForResult(role, REQ_ROLE))
+                            .show();
+                } else {
+                    new AlertDialog.Builder(activity)
+                            .setTitle(Ui.tr("Voltar ao Início original", "Go back to the original home screen"))
+                            .setMessage(Ui.tr("Abra o seletor de Início do sistema (segure o botão Início) e escolha o "
+                                            + "Início do tablet.",
+                                    "Open the system's home picker (press and hold the Home button) and pick the "
+                                            + "tablet's own home screen."))
+                            .setPositiveButton("OK", null).show();
+                }
+                return;
+            }
+            String message = Ui.tr("O Início vira o Free My Tablet: uma tela de início leve, sem propaganda, "
+                            + "e os apps que você não usa são desligados (nunca desinstalados).",
+                    "The home screen becomes Free My Tablet: a light home screen, with no ads, "
+                            + "and the apps you don't use are turned off (never uninstalled).");
             new AlertDialog.Builder(activity)
-                    .setTitle(free ? Ui.tr("Voltar ao original?", "Go back to the original?")
-                            : Ui.tr("Ligar o Free My Tablet?", "Turn on Free My Tablet?"))
+                    .setTitle(Ui.tr("Ligar o Free My Tablet?", "Turn on Free My Tablet?"))
                     .setMessage(message)
                     .setNegativeButton(Ui.tr("Cancelar", "Cancel"), null)
-                    .setPositiveButton(free ? Ui.tr("Voltar", "Go back") : Ui.tr("Ligar", "Turn on"),
-                            (d, w) -> HomeMode.request(activity, free ? HomeMode.ORIGINAL : HomeMode.FREE))
+                    .setPositiveButton(Ui.tr("Ligar", "Turn on"), (d, w) -> turnOn())
                     .show();
+        }
+
+        /** Become the home screen: the system's own dialog (Android 10+) or the tablet's ADB (Android 9). */
+        private void turnOn() {
+            Intent role = HomeMode.roleIntent(activity);
+            if (role != null) {
+                activity.startActivityForResult(role, REQ_ROLE);
+                return;
+            }
+            HomeMode.request(activity, HomeMode.FREE);
         }
 
         private void askLanguage() {
@@ -378,6 +428,12 @@ public class SettingsActivity extends Activity {
                             "Version " + version + ".\nA light home screen, with no ads, for your tablet.\n\n"
                                     + "Nothing is uninstalled: one button brings everything back."))
                     .setPositiveButton("OK", null).show();
+        }
+
+        /** Shows a message at the bottom of the screen (what the switch did). */
+        void notice(String text) {
+            statusText = text;
+            invalidate();
         }
 
         /** The checklist changed: keep it. */

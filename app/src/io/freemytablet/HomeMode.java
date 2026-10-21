@@ -1,6 +1,8 @@
 package io.freemytablet;
 
+import android.app.role.RoleManager;
 import android.content.Context;
+import android.content.Intent;
 import android.os.Build;
 import android.os.SystemClock;
 
@@ -117,6 +119,54 @@ final class HomeMode {
     private static final Object RUN = new Object();
     private static final Object FILE_LOCK = new Object();
 
+    // MARK: - The home role (Android 10 and newer)
+
+    /**
+     * From Android 10 on, the home screen is a role the system gives to whoever the user picks: no ADB and no
+     * scary prompts, just the system's own dialog. On Android 9 there is no role, and the home screen is set
+     * through the tablet's own ADB.
+     */
+    static final boolean HAS_ROLES = Build.VERSION.SDK_INT >= 29;
+
+    /** Whether our home screen is the system's home screen now. */
+    static boolean roleHeld(Context c) {
+        if (Build.VERSION.SDK_INT >= 30) {
+            RoleManager rm = (RoleManager) c.getSystemService(Context.ROLE_SERVICE);
+            if (rm != null) return rm.isRoleHeld(RoleManager.ROLE_HOME);
+        }
+        return state(c).optBoolean("roleHeld", false);
+    }
+
+    /**
+     * The system's own dialog to choose the home screen (null when the system has no such dialog). The same
+     * dialog serves for both ways: to become the home screen, and to give it back to the tablet's own launcher.
+     */
+    static Intent roleIntent(Context c) {
+        if (!HAS_ROLES) return null;
+        RoleManager rm = (RoleManager) c.getSystemService(Context.ROLE_SERVICE);
+        if (rm == null || !rm.isRoleAvailable(RoleManager.ROLE_HOME)) return null;
+        return rm.createRequestRoleIntent(RoleManager.ROLE_HOME);
+    }
+
+    /** The way back, without the ADB: the user picks the tablet's own launcher in the system's dialog. */
+    static void markOriginal(Context c) {
+        JSONObject s = state(c);
+        put(s, "mode", ORIGINAL);
+        put(s, "since", System.currentTimeMillis());
+        put(s, "roleHeld", false);
+        save(c, s);
+        notice(c, Ui.tr("Modo original: o Início do tablet voltou.",
+                "Original mode: the tablet's own home screen is back."));
+    }
+
+    /** Puts a value in the state (the JSON error never happens: the keys are ours). */
+    private static void put(JSONObject s, String key, Object value) {
+        try {
+            s.put(key, value);
+        } catch (JSONException ignored) {
+        }
+    }
+
     // MARK: - Requests (from any process)
 
     /** Asks the main process to switch (the settings screen calls this). */
@@ -149,113 +199,161 @@ final class HomeMode {
 
     private static void applyFree(Context c) {
         JSONObject s = state(c);
-        try (Adb adb = connect(c, s)) {
-            // The tablet's own home screen, recorded once (before ours replaces it) so "original" restores exactly what
-            // was there, on any brand.
-            String home = originalHome(s);
-            if (home.isEmpty() || home.startsWith(PKG + "/")) {
-                String found = currentHome(adb);
-                home = found != null ? found : "";
+        // The home screen: from Android 10 on, the role was already given by the system (the settings screen asked
+        // for it). On Android 9 there is no role, and it goes through the tablet's own ADB.
+        boolean homeOk = roleHeld(c);
+        if (!homeOk) {
+            try (Adb adb = connect(c, s)) {
+                homeOk = setHomeWithAdb(c, adb);
+            } catch (IOException e) {
+                AppLog.w("could not reach the tablet's ADB: " + e.getMessage());
             }
-            JSONObject latest = state(c);
-            latest.put("originalHome", home);
-            save(c, latest);
-            // Turning off an app makes Android delete the Wi-Fi networks it saved, and Original can't bring them back.
-            // The setup wizard usually saved the network: then stop here, before anything changes.
-            Set<String> owners = wifiOwners(adb);
-            boolean setupHome = setupIsHome(adb);
-            if (owners.contains(packageOf(home)) || (setupHome && owners.contains(GOOGLE_SETUP))) {
-                throw new IOException(Ui.tr("a configuração inicial do tablet salvou o Wi-Fi, e desligá-la apagaria essas redes. "
-                        + "Em Configurações → Conexões → Wi-Fi, esqueça a rede e conecte de novo (as fora de alcance não aparecem "
-                        + "lá: o Claude Code apaga pelo computador) e tente outra vez.",
-                        "the tablet's first setup saved the Wi-Fi, and turning it off would erase those networks. "
-                        + "In Settings → Connections → Wi-Fi, forget the network and connect again (networks out of range don't "
-                        + "show there: Claude Code can remove them from your computer), then try once more.",
-                        "la configuración inicial del tablet guardó el Wi-Fi, y desactivarla borraría esas redes. "
-                        + "En Ajustes → Conexiones → Wi-Fi, olvida la red y vuelve a conectarte (las fuera de alcance no aparecen "
-                        + "ahí: Claude Code las borra desde la computadora) y vuelve a intentarlo."));
-            }
-            if (metrics(latest, ORIGINAL) == null && !home.isEmpty()) {
-                busy(c, Ui.tr("Medindo o Início original…", "Measuring the original home screen…"));
-                measureHomeTime(c, adb, ORIGINAL);
-                measureMemory(c, adb, ORIGINAL);
-            }
-            busy(c, Ui.tr("Trocando o Início…", "Switching the home screen…"));
-            check(adb.shell("cmd package set-home-activity " + HOME_ACTIVITY), "Success",
-                    Ui.tr("o Android não aceitou o novo Início", "Android didn't accept the new home screen"));
-            List<String> targets = targets(home, setupHome);
-            Set<String> disabled = new HashSet<>(stringList(state(c), "disabled"));
-            Set<String> present = packages(adb, "");
-            int done = 0;
-            for (String pkg : targets) {
-                done++;
-                busy(c, Ui.tr("Desligando apps (", "Turning off apps (") + done + "/" + targets.size() + ")…");
-                if (PROTECTED.contains(pkg) || !present.contains(pkg) || owners.contains(pkg)) continue;
-                String out = adb.shell("pm disable-user --user 0 " + pkg);
-                if (out.contains("disabled-user")) disabled.add(pkg);
-                else AppLog.w("could not turn off " + pkg + ": " + out.trim());
-            }
-            Watchdog.clear(c);
-            s = state(c);
-            s.put("mode", FREE).put("since", System.currentTimeMillis()).put("homeReverted", false)
-                    .put("disabled", new JSONArray(sorted(disabled))).put("setupHome", setupHome);
-            save(c, s);
-            notice(c, Ui.tr("Free My Tablet ligado: Início novo, " + disabled.size() + " apps desligados.",
-                    "Free My Tablet is on: new home screen, " + disabled.size() + " apps turned off."));
-            busy(c, Ui.tr("Medindo o Free My Tablet…", "Measuring Free My Tablet…"));
-            measureHomeTime(c, adb, FREE);
-            done(c, null);
-            adb.shell("am start -a android.intent.action.MAIN -c android.intent.category.HOME");
-            ModeJob.schedule(c, ModeJob.MEMORY, FREE, 120_000);
-        } catch (Exception e) {
-            done(c, Ui.tr("Não deu para ligar o Free My Tablet: ", "Couldn't turn on Free My Tablet: ") + e.getMessage());
         }
+        if (!homeOk) {
+            done(c, Ui.tr("O Android não aceitou o novo Início. Sem ADB no tablet, use o seletor de Início do "
+                            + "sistema (segure o botão Início) e escolha o Free My Tablet.",
+                    "Android didn't accept the new home screen. Without the tablet's ADB, use the system's own home "
+                            + "picker (press and hold the Home button) and pick Free My Tablet."));
+            return;
+        }
+        s = state(c);
+        put(s, "roleHeld", true);
+        save(c, s);
+        // The apps: through the tablet's own ADB (the port is open after "adb tcpip 5555"). Without it the home
+        // screen still works: only the apps stay on.
+        int turned = 0;
+        try (Adb adb = connect(c, s)) {
+            turned = turnAppsOff(c, adb);
+        } catch (IOException e) {
+            notice(c, Ui.tr("O Início novo está no lugar. Os apps não puderam ser desligados: o ADB do tablet não está "
+                            + "aberto (\"adb tcpip 5555\" pelo computador).",
+                    "The new home screen is in place. The apps could not be turned off: the tablet's ADB is not open "
+                            + "(run \"adb tcpip 5555\" from your computer)."));
+        }
+        Watchdog.clear(c);
+        s = state(c);
+        put(s, "mode", FREE);
+        put(s, "since", System.currentTimeMillis());
+        put(s, "homeReverted", false);
+        save(c, s);
+        notice(c, Ui.tr("Free My Tablet ligado: Início novo, " + turned + " apps desligados.",
+                "Free My Tablet is on: new home screen, " + turned + " apps turned off."));
+        done(c, null);
+    }
+
+    /** Sets our home screen through the tablet's ADB (Android 9, or when the role was refused). */
+    private static boolean setHomeWithAdb(Context c, Adb adb) throws IOException {
+        JSONObject s = state(c);
+        // The tablet's own home screen, recorded once (before ours replaces it) so "original" restores exactly what
+        // was there, on any brand.
+        String home = originalHome(s);
+        if (home.isEmpty() || home.startsWith(PKG + "/")) {
+            String found = currentHome(adb);
+            home = found != null ? found : "";
+        }
+        put(s, "originalHome", home);
+        save(c, s);
+        // Turning off an app makes Android delete the Wi-Fi networks it saved, and Original can't bring them back.
+        // The setup wizard usually saved the network: then stop here, before anything changes.
+        Set<String> owners = wifiOwners(adb);
+        boolean setupHome = setupIsHome(adb);
+        if (owners.contains(packageOf(home)) || (setupHome && owners.contains(GOOGLE_SETUP))) {
+            throw new IOException(Ui.tr("a configuração inicial do tablet salvou o Wi-Fi, e desligá-la apagaria essas redes. "
+                    + "Em Configurações → Conexões → Wi-Fi, esqueça a rede e conecte de novo (as fora de alcance não aparecem "
+                    + "lá: o Claude Code apaga pelo computador) e tente outra vez.",
+                    "the tablet's first setup saved the Wi-Fi, and turning it off would erase those networks. "
+                    + "In Settings → Connections → Wi-Fi, forget the network and connect again (networks out of range don't "
+                    + "show there: Claude Code can remove them from your computer), then try once more.",
+                    "la configuración inicial del tablet guardó el Wi-Fi, y desactivarla borraría esas redes. "
+                    + "En Ajustes → Conexiones → Wi-Fi, olvida la red y vuelve a conectarte (las fuera de alcance no aparecen "
+                    + "ahí: Claude Code las borra desde la computadora) y vuelve a intentarlo."));
+        }
+        busy(c, Ui.tr("Trocando o Início…", "Switching the home screen…"));
+        check(adb.shell("cmd package set-home-activity " + HOME_ACTIVITY), "Success",
+                Ui.tr("o Android não aceitou o novo Início", "Android didn't accept the new home screen"));
+        put(s, "setupHome", setupHome);
+        save(c, s);
+        return true;
+    }
+
+    /** Turns off the apps that don't belong (the list in DEBLOAT and the ones the person picked). */
+    private static int turnAppsOff(Context c, Adb adb) throws IOException {
+        JSONObject s = state(c);
+        String home = originalHome(s);
+        boolean setupHome = s.optBoolean("setupHome", true);
+        List<String> targets = targets(home, setupHome);
+        Set<String> disabled = new HashSet<>(stringList(s, "disabled"));
+        Set<String> present = packages(adb, "");
+        Set<String> owners = wifiOwners(adb);
+        int done = 0;
+        for (String pkg : targets) {
+            done++;
+            busy(c, Ui.tr("Desligando apps (", "Turning off apps (") + done + "/" + targets.size() + ")…");
+            if (PROTECTED.contains(pkg) || !present.contains(pkg) || owners.contains(pkg)) continue;
+            String out = adb.shell("pm disable-user --user 0 " + pkg);
+            if (out.contains("disabled-user")) disabled.add(pkg);
+            else AppLog.w("could not turn off " + pkg + ": " + out.trim());
+        }
+        put(s, "disabled", new JSONArray(sorted(disabled)));
+        save(c, s);
+        return disabled.size();
     }
 
     private static void applyOriginal(Context c) {
         JSONObject s = state(c);
+        // The home screen back to the tablet's own: the recorded home is set again through the ADB. Without it
+        // (the port closed), the settings screen asks the user to pick the tablet's launcher in the system's dialog.
+        boolean homeOk = false;
+        List<String> failed = new ArrayList<>();
         try (Adb adb = connect(c, s)) {
-            busy(c, Ui.tr("Religando os apps…", "Turning the apps back on…"));
-            String home = originalHome(s);
-            Set<String> toEnable = new HashSet<>(stringList(s, "disabled"));
-            for (String pkg : targets(home, true)) {
-                if (!Arrays.asList(DEBLOAT).contains(pkg) && !Arrays.asList(ASSISTANT).contains(pkg)
-                        && !Arrays.asList(OPTIONAL).contains(pkg)) toEnable.add(pkg);
-            }
-            Set<String> present = packages(adb, "");
-            int done = 0;
-            List<String> failed = new ArrayList<>();
-            for (String pkg : sorted(toEnable)) {
-                done++;
-                busy(c, Ui.tr("Religando apps (", "Turning apps back on (") + done + "/" + toEnable.size() + ")…");
-                if (!present.contains(pkg)) continue;
-                // Checked: whatever didn't come back stays on the list (and in the notice); nothing disappears silently.
-                String out = adb.shell("pm enable " + pkg);
-                if (!out.contains("new state: enabled")) failed.add(pkg);
-            }
             busy(c, Ui.tr("Devolvendo o Início original…", "Restoring the original home screen…"));
-            boolean homeOk = restoreHome(adb, home);
-            s = state(c);
-            s.put("mode", ORIGINAL).put("since", System.currentTimeMillis()).put("homeReverted", false)
-                    .put("disabled", new JSONArray(failed));
-            save(c, s);
-            if (failed.isEmpty() && homeOk) {
-                notice(c, Ui.tr("Modo original: Início e apps de fábrica de volta.",
-                        "Original mode: the factory home screen and apps are back."));
-            } else {
-                List<String> problems = new ArrayList<>(failed);
-                if (!homeOk) problems.add(Ui.tr("o Início original", "the original home screen"));
-                notice(c, Ui.tr("Modo original, mas não consegui religar: ", "Original mode, but I couldn't turn back on: ")
-                        + String.join(", ", problems) + ".");
-            }
-            busy(c, Ui.tr("Medindo o Início original…", "Measuring the original home screen…"));
-            measureHomeTime(c, adb, ORIGINAL);
-            done(c, null);
-            adb.shell("am start -a android.intent.action.MAIN -c android.intent.category.HOME");
-            ModeJob.schedule(c, ModeJob.MEMORY, ORIGINAL, 120_000);
-        } catch (Exception e) {
-            done(c, Ui.tr("Não deu para voltar ao original: ", "Couldn't go back to the original: ") + e.getMessage());
+            homeOk = restoreHome(adb, originalHome(s));
+            busy(c, Ui.tr("Religando os apps…", "Turning the apps back on…"));
+            failed = turnAppsOn(c, adb);
+        } catch (IOException e) {
+            AppLog.w("could not reach the tablet's ADB: " + e.getMessage());
         }
+        s = state(c);
+        put(s, "mode", ORIGINAL);
+        put(s, "since", System.currentTimeMillis());
+        put(s, "homeReverted", false);
+        put(s, "roleHeld", false);
+        put(s, "disabled", new JSONArray(failed));
+        save(c, s);
+        if (!failed.isEmpty()) {
+            notice(c, Ui.tr("Modo original, mas não consegui religar: ", "Original mode, but I couldn't turn back on: ")
+                    + String.join(", ", failed) + ".");
+        } else if (homeOk) {
+            notice(c, Ui.tr("Modo original: Início e apps de fábrica de volta.",
+                    "Original mode: the factory home screen and apps are back."));
+        } else {
+            notice(c, Ui.tr("Escolha o Início do tablet no aviso do sistema (o botão Início, segure) para voltar.",
+                    "Pick the tablet's own home screen in the system's dialog (press and hold the Home button) to go back."));
+        }
+        done(c, null);
+    }
+
+    /** Turns the apps back on: everything that was turned off, plus the ones in the lists. */
+    private static List<String> turnAppsOn(Context c, Adb adb) throws IOException {
+        JSONObject s = state(c);
+        String home = originalHome(s);
+        Set<String> toEnable = new HashSet<>(stringList(s, "disabled"));
+        for (String pkg : targets(home, true)) {
+            if (!Arrays.asList(DEBLOAT).contains(pkg) && !Arrays.asList(ASSISTANT).contains(pkg)
+                    && !Arrays.asList(OPTIONAL).contains(pkg)) toEnable.add(pkg);
+        }
+        Set<String> present = packages(adb, "");
+        int done = 0;
+        List<String> failed = new ArrayList<>();
+        for (String pkg : sorted(toEnable)) {
+            done++;
+            busy(c, Ui.tr("Religando apps (", "Turning apps back on (") + done + "/" + toEnable.size() + ")…");
+            if (!present.contains(pkg)) continue;
+            // Checked: whatever didn't come back stays on the list (and in the notice); nothing disappears silently.
+            String out = adb.shell("pm enable " + pkg);
+            if (!out.contains("new state: enabled")) failed.add(pkg);
+        }
+        return failed;
     }
 
     /** The recorded home screen; without one, the system's own (we leave the role). */
