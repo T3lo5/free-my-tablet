@@ -54,7 +54,7 @@ impossível não vira promessa, e o que não faz sentido para um launcher leve f
 | 4 | ~~**A nota vai sempre para a raiz do vault**~~ | **Feito na v1.9** (a pasta da nota) | — |
 | 5 | ~~**Não dá para buscar dentro do vault**~~ | **Feito na v1.9**: a busca acha a nota e abre no Obsidian | — |
 | 6 | ~~**A tela de Espaço mostra só 8 apps**~~ | **Feito na v1.11**: mostra todos, do maior para o menor | — |
-| 7 | **O "Espaço" não mostra a memória e a CPU** | Mostrar a memória usada, a da CPU e quem está usando | médio |
+| 7 | ~~**O "Espaço" não mostra a memória e a CPU**~~ | **Feito na v1.8**: a linha *Tablet* mostra memória, bateria, processos, quem usa a CPU e quem usa a memória | — |
 | 8 | ~~**Não tem um painel do tablet** (o que está comendo a bateria)~~ | **Feito na v1.8**: a linha *Tablet* mostra memória, bateria, processos, quem usa a CPU e quem usa a memória | — |
 | 9 | ~~**Não dá para exportar as suas escolhas** (apps da tela, dock, pastas)~~ | **Feito na v1.9**: salvar (e ler de volta) no vault | — |
 | 10 | **Widgets de outro app que querem configuração própria não abrem** (a tela de configuração do outro app não é exportada) | O app abre a tela de configuração do próprio widget; quando ela não é exportada, o sistema não deixa — limitação do Android | pequeno (feito: o app já abre a configuração do widget) |
