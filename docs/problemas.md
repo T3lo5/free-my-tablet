@@ -35,6 +35,11 @@ impossível não vira promessa, e o que não faz sentido para um launcher leve f
 | 20 | **O aviso da atualização mostrava o JSON cru** | Mostra o texto, e o changelog sem as marcas do markdown | Corrigido |
 | 21 | **As linhas das configurações quebravam por índice** (acrescentar uma linha deslocava os valores) | A ordem vive em um lugar só | Corrigido |
 | 22 | **O botão de voltar da gaveta saía do app** | Consome o gesto | Corrigido |
+| 23 | **Os caminhos das notas do vault saíam errados** (o app pedia o id da árvore a um documento) | A árvore e o id andam juntos: os caminhos são certos e as subpastas aparecem | Corrigido e testado |
+| 24 | **A nota ia para a raiz do vault, ignorando a pasta escolhida** | A nota vai para a pasta (que é criada se não existir) | Testado no teu vault |
+| 25 | **A busca no vault travava a tela** (a varredura das pastas é lenta) | A busca abre na hora e as notas aparecem enquanto são achadas | Testado |
+| 26 | **O aviso da tela de Início voltava toda vez** | Ele é mostrado uma vez | Corrigido |
+| 27 | **O tema claro era um céu azul com texto branco** | O tema claro é papel quente, com a tinta escura em cima | Testado |
 
 ---
 
@@ -45,7 +50,7 @@ impossível não vira promessa, e o que não faz sentido para um launcher leve f
 | 1 | ~~**A gaveta de apps é uma lista só** — achar um app amongst 30 é rolagem~~ | **Feito na v1.9**: a busca no topo da lista filtra enquanto se digita | — |
 | 2 | ~~**Não tem "usados recentemente"** — o que você abriu ontem some~~ | **Feito na v1.9** (os abertos pelo launcher): uma fileira no topo da gaveta | — |
 | 3 | **O widget não pode ser redimensionado** | O host do widget pede o resize quando a pessoa arrasta | pequeno |
-| 3b | **A nota vai sempre para a raiz do vault** | **Feito na v1.9**: a pasta da nota é escolhida (e criada se não existir) | — |
+| 3b | ~~**A nota vai sempre para a raiz do vault**~~ | **Feito na v1.9/v1.10**: a pasta da nota é escolhida (e criada se não existir) | — |
 | 4 | ~~**A nota vai sempre para a raiz do vault**~~ | **Feito na v1.9** (a pasta da nota) | — |
 | 5 | ~~**Não dá para buscar dentro do vault**~~ | **Feito na v1.9**: a busca acha a nota e abre no Obsidian | — |
 | 6 | **A tela de Espaço mostra só 8 apps** | Mostrar todos, ordenados, e o que dá para liberar | pequeno |
@@ -57,6 +62,7 @@ impossível não vira promessa, e o que não faz sentido para um launcher leve f
 | 12 | **Não tem um "modo leitura"** (a tela escura, só o essencial, para ler de madrugada) | Um tema noturno total, com o relógio pequeno | pequeno |
 | 13 | **Não tem pastas/áreas de trabalho** (hoje é uma fileira só) | Áreas (ex.: estudo, trabalho, leitura) que trocam a fileira | médio |
 | 14 | **O app não sabe o que você quer abrir** (a "nota do dia", a aula) | Atalhos para o Obsidian com um arquivo fixo ("a nota de hoje") | pequeno |
+| 15 | **A busca no vault só acha pelo nome do arquivo** | Ler o conteúdo dos .md e procurar dentro (mais lento: o SAF pergunta arquivo por arquivo) | médio |
 
 ---
 
