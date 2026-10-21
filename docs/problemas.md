@@ -57,12 +57,13 @@ impossível não vira promessa, e o que não faz sentido para um launcher leve f
 | 7 | **O "Espaço" não mostra a memória e a CPU** | Mostrar a memória usada, a da CPU e quem está usando | médio |
 | 8 | ~~**Não tem um painel do tablet** (o que está comendo a bateria)~~ | **Feito na v1.8**: a linha *Tablet* mostra memória, bateria, processos, quem usa a CPU e quem usa a memória | — |
 | 9 | ~~**Não dá para exportar as suas escolhas** (apps da tela, dock, pastas)~~ | **Feito na v1.9**: salvar (e ler de volta) no vault | — |
-| 10 | **Widgets de outro app que querem configuração própria não abrem** (a tela de configuração do outro app não é exportada) | Abrir a configuração pelo sistema em vez de pelo nosso app | pequeno |
+| 10 | **Widgets de outro app que querem configuração própria não abrem** (a tela de configuração do outro app não é exportada) | O app abre a tela de configuração do próprio widget; quando ela não é exportada, o sistema não deixa — limitação do Android | pequeno (feito: o app já abre a configuração do widget) |
 | 11 | **O diretório de armazenamento quase cheio (14%)** | A tela de Espaço já limpa o cache; falta limpar cache de app em uso (o sistema não deixa) | médio |
 | 12 | ~~**Não tem um "modo leitura"**~~ | **Feito na v1.11**: o tema "Leitura" (tela preta, o relógio pequeno, os apps) | — |
 | 13 | ~~**Não tem pastas/áreas de trabalho**~~ | **Feito na v1.12**: as áreas trocam a fileira da tela com um toque | — |
 | 14 | ~~**O app não sabe o que você quer abrir**~~ | **Feito na v1.11**: "Abrir a nota de hoje" (abre o Obsidian na nota do dia) | — |
 | 15 | **A busca no vault só acha pelo nome do arquivo** | Ler o conteúdo dos .md e procurar dentro (mais lento: o SAF pergunta arquivo por arquivo) | médio |
+| 16 | **O tablet está com 14% do armazenamento usado** | A tela de Espaço limpa o cache de todos; o de um app em uso o sistema não deixa | médio (parcialmente feito) |
 
 ---
 
