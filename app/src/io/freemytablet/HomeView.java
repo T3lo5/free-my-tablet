@@ -289,6 +289,9 @@ public class HomeView extends View implements Choreographer.FrameCallback {
     /** Called when the person taps the sync button. */
     public Runnable onSyncTap;
 
+    /** Called when the person holds the home screen (the settings). */
+    public Runnable onLongPress;
+
     /** The quick note: the panel the text field sits on (the field itself is a real EditText, above this). */
     private void drawNote(Canvas c) {
         panel.setColor(0x26FFFFFF);
@@ -400,6 +403,12 @@ public class HomeView extends View implements Choreographer.FrameCallback {
                 if (allOpen) {
                     if (!moved) tapAll(e.getX(), e.getY());
                 } else if (!moved) {
+                    // A long press on the empty screen: the settings (like every launcher's wallpaper).
+                    if (System.currentTimeMillis() - downAt > 550 && hitFavorites(e.getX(), e.getY()) < 0
+                            && onLongPress != null) {
+                        onLongPress.run();
+                        return true;
+                    }
                     tap(e.getX(), e.getY());
                 }
                 return true;

@@ -41,7 +41,9 @@ tablet before you do it, and let them do the taps on the tablet.
    ```
    This is what lets the app turn the preinstalled apps off **from inside the tablet**. The port closes when the
    tablet reboots: run it again then. It is not needed to change the home screen (see below).
-7. **They switch on the tablet:** *Free My Tablet* → *Home screen* → *Free My Tablet*. The system asks which home
+7. **They switch on the tablet:** the settings open from the app's icon (in *All apps*, the button at the bottom
+   right) or by **holding the home screen** (the empty part). Then *Home screen* → *Free My Tablet*. The system asks
+   which home
    app to use (Android's own dialog, the HOME role): pick Free My Tablet. Then the tablet asks to allow debugging
    (the app's own ADB): accept it and tick **"Sempre permitir"** — otherwise the next switch asks again.
    Don't switch modes from the computer.

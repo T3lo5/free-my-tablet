@@ -79,6 +79,9 @@ About ten minutes. You need an Android tablet (Android 9 or newer) and a compute
 
 ## Settings
 
+The settings open from the app's icon (in *All apps*, the button at the bottom right of the home screen) or by
+**holding the empty part of the home screen**.
+
 | Where | What |
 |---|---|
 | *Home screen* | Free My Tablet ⇄ Original (the factory home screen) |

@@ -45,9 +45,8 @@ final class HomeApps {
         }
     }
 
-    /** Never on the screen: our own app, the setup wizards and the apps with no icon. */
+    /** Never on the screen: the setup wizards and the apps with no icon. Our own app stays (it opens the settings). */
     private static final Set<String> HIDDEN = new HashSet<>(Arrays.asList(
-            "io.freemytablet",
             "com.samsung.android.setupwizard",
             "com.google.android.tungsten.setupwraith",
             "com.android.vending",       // the Play Store: it stays out of the way
@@ -82,7 +81,7 @@ final class HomeApps {
             ApplicationInfo app = info.activityInfo.applicationInfo;
             if (app == null) continue;
             String pkg = app.packageName;
-            if (pkg.equals(c.getPackageName()) || HIDDEN.contains(pkg) || !seen.add(pkg)) continue;
+            if (HIDDEN.contains(pkg) || !seen.add(pkg)) continue;
             String label = String.valueOf(pm.getApplicationLabel(app));
             Item item = new Item(pkg, label);
             item.icon = info.loadIcon(pm);

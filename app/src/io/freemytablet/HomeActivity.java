@@ -108,6 +108,8 @@ public class HomeActivity extends Activity {
         getWindow().setBackgroundDrawable(null);
         home.onOutsideTap = this::hideKeyboard;
         home.onSyncTap = this::sync;
+        // Holding the empty home screen opens the settings (like holding the wallpaper of any launcher).
+        home.onLongPress = () -> startActivity(new Intent(this, SettingsActivity.class));
     }
 
     /** The sync button: the git pull and the copy, done by Termux (that is where git is). */
