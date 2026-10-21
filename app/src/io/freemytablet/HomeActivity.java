@@ -270,6 +270,7 @@ public class HomeActivity extends Activity {
         super.onResume();
         Weather.refresh(this);
         showWidget();
+        checkForUpdates();
         if (home != null) {
             if (prefsVersion != Prefs.version) {   // the favorites or the theme changed in the settings
                 prefsVersion = Prefs.version;
@@ -279,6 +280,28 @@ public class HomeActivity extends Activity {
         }
         running = true;
         handler.post(poll);
+    }
+
+    /**
+     * Looks for a new version, once in a while (the GitHub API is not called on every open). When there is one,
+     * the home screen says so: the person updates from the settings, without downloading anything by hand.
+     */
+    private void checkForUpdates() {
+        long now = System.currentTimeMillis();
+        if (now - Prefs.updateCheck() < 6 * 60 * 60_000L) return;
+        Prefs.setUpdateCheck(now);
+        final Context app = getApplicationContext();
+        new Thread(() -> {
+            Update.Info info = Update.check(app);
+            if (info == null) return;
+            runOnUiThread(() -> {
+                if (home != null) {
+                    home.notice(Ui.tr("Tem versão nova (", "There is a new version (") + info.version
+                            + Ui.tr("). Abra as configurações para atualizar.",
+                                    "). Open the settings to update."));
+                }
+            });
+        }, "update-check").start();
     }
 
     /** Puts the widget of the slot on the home screen (the person chose it in the settings). */

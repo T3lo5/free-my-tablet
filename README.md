@@ -44,6 +44,8 @@ nothing is ever uninstalled.
 - **A space report.** It shows what is using your tablet (the apps, the cache, the notifications) and clears
   the cache of everything with one tap. On a tablet with 2 GB of RAM, that is the difference between slow and
   fast.
+- **It updates itself.** The app looks for a new release on its own and tells the person: one tap downloads it
+  and opens the installer. No APK to fetch by hand, no repository to watch.
 - **Nothing extra.** No ads, no sponsored rows, no promo widgets, no analytics, no account.
 - **Light by day, dark by night.** The screen follows the real sunrise and sunset where you are (or you can
   choose the light or the dark one).
@@ -64,6 +66,10 @@ About ten minutes. You need an Android tablet (Android 9 or newer) and a compute
 2. Copy it to the tablet and open it (the tablet asks to allow the installation from that app).
 3. Open **Free My Tablet** → *Home screen* → *Free My Tablet*, and accept the debugging prompt
    (tick *Always allow*).
+
+There is a short guide in Portuguese: [`docs/instalar.md`](docs/instalar.md).
+
+**And the next updates come from the app itself**: *Free My Tablet → Updates*.
 
 ### The easy way: Claude Code
 
@@ -116,6 +122,7 @@ The settings open from the app's icon (in *All apps*, the button at the bottom r
 | *Sync* | The git folder in Termux and the command that pulls |
 | *Space* | What is using the tablet, and the buttons to free some of it |
 | *Who talks to you* | The apps that send the most notifications (a tap opens the system screen) |
+| *Updates* | Looks for a new release and installs it (the system asks to confirm) |
 | *Apps to turn off* | The preinstalled apps you never use (Bixby, Samsung Internet, the Play apps…) |
 | *Language* | Automatic, Português, English, Español |
 | *Theme* | Automatic (follows the sun), Light, Dark |

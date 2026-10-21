@@ -11,6 +11,8 @@
     <!-- Termux's permission to run commands (that is where git is). Only asked for when the person uses the
          sync button; the app works without Termux. -->
     <uses-permission android:name="com.termux.permission.RUN_COMMAND" />
+    <!-- The update: the app downloads the new APK and the system asks the person to install it. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <!-- Android 11+ (package visibility): without this the app can't "see" the other apps. The launcher intent is
          the one a launcher needs: every app that can be opened. The HOME intent is what lets the system offer the
@@ -91,6 +93,13 @@
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
+
+        <!-- The downloaded APK, for the system's installer. -->
+        <provider
+            android:name=".ApkProvider"
+            android:authorities="io.freemytablet.apk"
+            android:exported="false"
+            android:grantUriPermissions="true" />
 
         <!-- The widget of the app: the last notes of the Obsidian vault. -->
         <receiver

@@ -132,7 +132,7 @@ public class SettingsActivity extends Activity {
         private long lastFrame;
         private String statusText = "";
 
-        static final int MAIN = 0, FAVORITES = 1, OFF_APPS = 2, SPACE = 3, TALKERS = 4;
+        static final int MAIN = 0, FAVORITES = 1, OFF_APPS = 2, SPACE = 3, TALKERS = 4, UPDATES = 5;
 
         SettingsView(Activity a) {
             super(a);
@@ -198,6 +198,7 @@ public class SettingsActivity extends Activity {
             out.add(Ui.tr("Sincronizar", "Sync"));
             out.add(Ui.tr("Espaço", "Space"));
             out.add(Ui.tr("Quem fala com você", "Who talks to you"));
+            out.add(Ui.tr("Atualizações", "Updates"));
             out.add(Ui.tr("Apps para desligar", "Apps to turn off"));
             out.add(Ui.tr("Idioma", "Language"));
             out.add(Ui.tr("Tema", "Theme"));
@@ -220,12 +221,13 @@ public class SettingsActivity extends Activity {
                 case 6: return Ui.tr("O que ocupa o tablet", "What is using the tablet");
                 case 7: return Ui.tr("Notificações", "Notifications");
                 case 8: return Ui.tr("Apps que você não usa", "Apps you don't use");
-                case 9: {
+                case 9: return updateState;
+                case 10: {
                     String l = Prefs.language();
                     return "auto".equals(l) ? Ui.tr("Automático", "Automatic")
                             : "pt".equals(l) ? "Português" : "es".equals(l) ? "Español" : "English";
                 }
-                case 10: {
+                case 11: {
                     String t = Prefs.theme();
                     return "light".equals(t) ? Ui.tr("Claro", "Light") : "dark".equals(t) ? Ui.tr("Escuro", "Dark")
                             : Ui.tr("Automático", "Automatic");
@@ -261,6 +263,8 @@ public class SettingsActivity extends Activity {
                 drawSpace(c);
             } else if (screen == TALKERS) {
                 drawTalkers(c);
+            } else if (screen == UPDATES) {
+                drawUpdates(c);
             } else {
                 drawChecklist(c);
             }
@@ -289,6 +293,18 @@ public class SettingsActivity extends Activity {
         private String title() {
             return screen == OFF_APPS ? Ui.tr("Apps para desligar", "Apps to turn off")
                     : Ui.tr("Apps na tela", "Apps on the home screen");
+        }
+
+        /** The updates. */
+        private void drawUpdates(Canvas c) {
+            title.setColor(0xFFFFFFFF);
+            c.drawText(Ui.tr("Atualizações", "Updates"), dp(20), dp(44), title);
+            float y = top - scroll;
+            for (String line : updateLines) {
+                rowTitle.setColor(0xFFFFFFFF);
+                c.drawText(line, dp(20), y + dp(30), rowTitle);
+                y += rowH;
+            }
         }
 
         /** Who talks the most. */
@@ -365,6 +381,7 @@ public class SettingsActivity extends Activity {
                     if (screen == MAIN) tapMain(e.getY());
                     else if (screen == SPACE) tapSpace((int) ((e.getY() + scroll - top + rowH / 2) / rowH));
                     else if (screen == TALKERS) tapTalker((int) ((e.getY() + scroll - top + rowH / 2) / rowH));
+                    else if (screen == UPDATES) tapUpdate((int) ((e.getY() + scroll - top + rowH / 2) / rowH));
                     else tapChecklist(e.getY());
                     return true;
                 }
@@ -379,6 +396,7 @@ public class SettingsActivity extends Activity {
             if (screen == MAIN) items = rows.size();
             else if (screen == SPACE) items = spaceLines.size();
             else if (screen == TALKERS) items = talkerLines.size();
+            else if (screen == UPDATES) items = updateLines.size();
             else items = apps.size();
             return Math.max(0, items * rowH - (bottom - top));
         }
@@ -401,10 +419,80 @@ public class SettingsActivity extends Activity {
                 case 6: openSpace(); break;
                 case 7: openTalkers(); break;
                 case 8: openChecklist(OFF_APPS); break;
-                case 9: askLanguage(); break;
-                case 10: askTheme(); break;
+                case 9: openUpdates(); break;
+                case 10: askLanguage(); break;
+                case 11: askTheme(); break;
                 default: askAbout(); break;
             }
+        }
+
+        /** The updates: what the latest release is, and the button to install it. */
+        private void openUpdates() {
+            screen = UPDATES;
+            scroll = 0;
+            updateLines = new ArrayList<>();
+            updateLines.add(Ui.tr("Procurando…", "Looking…"));
+            updateInfo = null;
+            invalidate();
+            final Context app = activity.getApplicationContext();
+            new Thread(() -> {
+                Update.Info info = Update.check(app);
+                List<String> lines = new ArrayList<>();
+                if (info == null) {
+                    lines.add(Ui.tr("Você está na última versão (", "You have the latest version (")
+                            + Update.installed(app) + ")");
+                } else {
+                    lines.add(Ui.tr("Nova versão: ", "New version: ") + info.version);
+                    lines.add(Ui.tr("Tamanho: ", "Size: ") + size(info.size));
+                    lines.add("");
+                    for (String line : info.notes.split("\n")) {
+                        if (line.trim().isEmpty()) continue;
+                        lines.add(line.trim());
+                    }
+                    lines.add("");
+                    lines.add(Ui.tr("Toque em “Atualizar” para baixar e instalar.",
+                            "Tap “Update” to download and install."));
+                }
+                activity.runOnUiThread(() -> {
+                    updateInfo = info;
+                    updateLines = lines;
+                    updateState = info == null ? Ui.tr("Atualizado", "Up to date")
+                            : Ui.tr("Nova versão", "New version");
+                    reload();
+                    invalidate();
+                });
+            }, "update").start();
+        }
+
+        private List<String> updateLines = new ArrayList<>();
+        private Update.Info updateInfo;
+        private String updateState = "";
+
+        /** The button of the update screen: download the APK and open the installer. */
+        private void tapUpdate(int index) {
+            if (updateInfo == null) return;
+            if (index != updateLines.size() - 1) return;    // the last line is the button
+            final Update.Info info = updateInfo;
+            final Context app = activity.getApplicationContext();
+            updateLines = new ArrayList<>();
+            updateLines.add(Ui.tr("Baixando…", "Downloading…"));
+            invalidate();
+            new Thread(() -> {
+                String message;
+                java.io.File file = null;
+                try {
+                    file = Update.download(app, info.url);
+                    Update.install(app, file);
+                    message = Ui.tr("Abrindo o instalador…", "Opening the installer…");
+                } catch (Exception e) {
+                    message = Ui.tr("Não consegui baixar: ", "I couldn't download: ") + e.getMessage();
+                }
+                final String text = message;
+                activity.runOnUiThread(() -> {
+                    notice(text);
+                    openUpdates();
+                });
+            }, "download").start();
         }
 
         /** Who talks the most: the notifications the tablet received, with a way to turn each one off. */

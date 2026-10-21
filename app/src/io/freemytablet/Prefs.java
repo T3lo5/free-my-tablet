@@ -33,6 +33,11 @@ final class Prefs {
         version++;
     }
 
+    private static void put(String key, long value) {
+        sp().edit().putLong(key, value).apply();
+        version++;
+    }
+
     private static void put(String key, int value) {
         sp().edit().putInt(key, value).apply();
         version++;
@@ -132,6 +137,12 @@ final class Prefs {
         for (String p : packages) sb.append(sb.length() == 0 ? "" : ",").append(p);
         put("optionalOff", sb.toString());
     }
+
+    // MARK: - The updates
+
+    /** When the app last looked for a new version (the API is not called again for a while). */
+    static long updateCheck() { return sp().getLong("updateCheck", 0); }
+    static void setUpdateCheck(long when) { put("updateCheck", when); }
 
     // MARK: - The widget on the home screen
 
