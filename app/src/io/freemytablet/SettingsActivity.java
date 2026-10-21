@@ -62,6 +62,8 @@ public class SettingsActivity extends Activity {
                     }
                 }
             }
+            AppLog.w("the picker answered: result=" + resultCode + " data=" + (data == null ? "none" : data.getData())
+                    + " extra=" + (data == null ? "none" : data.getIntExtra(android.appwidget.AppWidgetManager.EXTRA_APPWIDGET_ID, 0)));
             if (id != 0) Widgets.picked(this, REQ_WIDGET, id);
             view.reload();
             return;
