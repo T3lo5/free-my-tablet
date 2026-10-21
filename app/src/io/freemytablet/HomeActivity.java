@@ -33,6 +33,8 @@ import android.widget.TextView;
 public class HomeActivity extends Activity {
     /** The system's folder picker (for the Obsidian vault). */
     static final int REQ_VAULT = 43;
+    /** Termux's permission to run commands (the git pull). */
+    static final int REQ_TERMUX = 44;
 
     private HomeView home;
     private EditText note;
@@ -105,6 +107,53 @@ public class HomeActivity extends Activity {
         setContentView(root);
         getWindow().setBackgroundDrawable(null);
         home.onOutsideTap = this::hideKeyboard;
+        home.onSyncTap = this::sync;
+    }
+
+    /** The sync button: the git pull and the copy, done by Termux (that is where git is). */
+    private void sync() {
+        if (!Vault.ready(this)) {
+            home.notice(Ui.tr("Escolha a pasta do Obsidian nas configurações primeiro.",
+                    "Choose the Obsidian folder in the settings first."));
+            return;
+        }
+        if (!Termux.installed(this)) {
+            home.notice(Ui.tr("O Termux não está neste tablet.", "Termux is not on this tablet."));
+            return;
+        }
+        if (!Termux.allowed(this)) {
+            // Termux asks for this permission itself: the system's dialog.
+            requestPermissions(new String[] {Termux.PERMISSION}, REQ_TERMUX);
+            return;
+        }
+        startSync();
+    }
+
+    private void startSync() {
+        if (!Sync.start(this)) {
+            home.notice(Ui.tr("Não consegui escrever o script de sincronização na pasta do Obsidian.",
+                    "I couldn't write the sync script in the Obsidian folder."));
+            return;
+        }
+        home.notice(Ui.tr("Sincronizando…", "Syncing…"));
+        Sync.waitForResult(this, (ok, text) -> runOnUiThread(() -> {
+            if (ok) home.notice(Ui.tr("Sincronizado.", "Synced."));
+            else home.notice(text.isEmpty()
+                    ? Ui.tr("A sincronização não respondeu.", "The sync did not answer.")
+                    : text);
+        }));
+    }
+
+    /** Termux's permission: the person said yes (or no). */
+    @Override public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode != REQ_TERMUX) return;
+        if (grantResults.length > 0 && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            startSync();
+        } else if (home != null) {
+            home.notice(Ui.tr("Sem a permissão do Termux a sincronização não roda.",
+                    "Without Termux's permission the sync cannot run."));
+        }
     }
 
     /** The quick note field: white text on the panel, one line, the system's keyboard. */
@@ -198,8 +247,9 @@ public class HomeActivity extends Activity {
 
     @Override protected void onResume() {
         super.onResume();
+        Weather.refresh(this);
         if (home != null) {
-            if (prefsVersion != Prefs.version) {   // the favorites changed in the settings
+            if (prefsVersion != Prefs.version) {   // the favorites or the theme changed in the settings
                 prefsVersion = Prefs.version;
                 home.reload();
             }

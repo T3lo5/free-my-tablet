@@ -47,8 +47,7 @@ final class Sky {
      * Palette for the sun's current position at your location. Uses the sunrise and sunset times from the last
      * fetch (they shift ~1 min a day, so yesterday's times are fine today); without data, 5:30 and 17:40.
      */
-    static void sky(Palette out, long now, long sunrise, long sunset) {
-        java.util.Calendar cal = java.util.Calendar.getInstance();
+    static void sky(Palette out, long now, long sunrise, long sunset) {        java.util.Calendar cal = java.util.Calendar.getInstance();
         cal.setTimeInMillis(now);
         cal.set(java.util.Calendar.HOUR_OF_DAY, 0);
         cal.set(java.util.Calendar.MINUTE, 0);
@@ -71,6 +70,16 @@ final class Sky {
                 return;
             }
         }
+    }
+
+    /** The day palette, whatever the hour (the "light" theme). */
+    static void light(Palette out) {
+        out.set(DAY[0], DAY[1], DAY[2]);
+    }
+
+    /** The night palette, whatever the hour (the "dark" theme). */
+    static void dark(Palette out) {
+        out.set(NIGHT[0], NIGHT[1], NIGHT[2]);
     }
 
     /** Time of day (ms since local midnight) of an instant; `fallback` if there is no data. */

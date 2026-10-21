@@ -8,7 +8,9 @@ import android.net.Uri;
 import android.os.Build;
 import android.provider.DocumentsContract;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
@@ -50,16 +52,18 @@ final class Vault {
         if (tree.isEmpty() || note.trim().isEmpty()) return null;
         try {
             Uri folder = Uri.parse(tree);
+            // The tree URI is the folder; the document URI is the folder as a document (what createDocument wants).
+            Uri document = DocumentsContract.buildDocumentUriUsingTree(folder,
+                    DocumentsContract.getTreeDocumentId(folder));
             ContentResolver resolver = c.getContentResolver();
             String today = new SimpleDateFormat("yyyy-MM-dd", Locale.US).format(new Date());
             String name = Ui.tr("Nota rápida ", "Quick note ") + today + ".md";
             Uri file = find(resolver, folder, name);
             boolean fresh = file == null;
             if (fresh) {
-                file = DocumentsContract.createDocument(resolver, folder, "text/markdown", name);
+                file = DocumentsContract.createDocument(resolver, document, "text/markdown", name);
                 if (file == null) return null;
-            }
-            try (OutputStream out = resolver.openOutputStream(file, "wt")) {
+            }            try (OutputStream out = resolver.openOutputStream(file, "rwt")) {
                 if (out == null) return null;
                 String text = fresh ? "" : "\n\n";
                 out.write(text.getBytes(StandardCharsets.UTF_8));
@@ -70,7 +74,7 @@ final class Vault {
             }
             return name;
         } catch (Exception e) {
-            AppLog.w("could not save the note: " + e.getMessage());
+            AppLog.w("could not save the note: " + e);
             return null;
         }
     }
@@ -93,5 +97,89 @@ final class Vault {
             AppLog.w("could not look in the vault: " + e.getMessage());
         }
         return null;
+    }
+
+    /** Where the vault is on the disk ("/storage/emulated/0/Documents/Obsidian/pos-coders"), or "". */
+    static String path(Context c) {
+        String tree = Prefs.vault();
+        if (tree.isEmpty()) return "";
+        try {
+            String id = DocumentsContract.getTreeDocumentId(Uri.parse(tree));
+            int colon = id.indexOf(':');
+            if (colon < 0) return "";
+            String volume = id.substring(0, colon);
+            String rest = id.substring(colon + 1);
+            String root = "primary".equals(volume) ? "/storage/emulated/0" : "/storage/" + volume;
+            return rest.isEmpty() ? root : root + "/" + rest;
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    /** Writes a file in the vault (the script Termux runs, the log it leaves). */
+    static boolean write(Context c, String name, String content) {
+        return write(c, name, content, "application/x-free-my-tablet");
+    }
+
+    /**
+     * Writes a file in the vault. The mime type is one the system does not know: the folder app would add its
+     * own extension to the name ("script.sh" would become "script.sh.txt").
+     */
+    static boolean write(Context c, String name, String content, String mimeType) {
+        String tree = Prefs.vault();
+        if (tree.isEmpty()) return false;
+        try {
+            Uri folder = Uri.parse(tree);
+            Uri document = DocumentsContract.buildDocumentUriUsingTree(folder,
+                    DocumentsContract.getTreeDocumentId(folder));
+            ContentResolver resolver = c.getContentResolver();
+            Uri file = find(resolver, folder, name);
+            boolean fresh = file == null;
+            if (fresh) {
+                file = DocumentsContract.createDocument(resolver, document, mimeType, name);
+                if (file == null) return false;
+            }
+            try (OutputStream out = resolver.openOutputStream(file, "rwt")) {
+                if (out == null) return false;
+                out.write(content.getBytes(StandardCharsets.UTF_8));
+            }
+            return true;
+        } catch (Exception e) {
+            AppLog.w("could not write " + name + ": " + e.getMessage());
+            return false;
+        }
+    }
+
+    /** Reads a file of the vault (the log of the sync), or null. */
+    static String read(Context c, String name) {
+        String tree = Prefs.vault();
+        if (tree.isEmpty()) return null;
+        try {
+            Uri folder = Uri.parse(tree);
+            Uri file = find(c.getContentResolver(), folder, name);
+            if (file == null) return null;
+            try (InputStream in = c.getContentResolver().openInputStream(file)) {
+                if (in == null) return null;
+                ByteArrayOutputStream out = new ByteArrayOutputStream();
+                byte[] buffer = new byte[4096];
+                int n;
+                while ((n = in.read(buffer)) > 0) out.write(buffer, 0, n);
+                return new String(out.toByteArray(), StandardCharsets.UTF_8);
+            }
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /** Removes a file of the vault (the log of the sync, once it was read). */
+    static void delete(Context c, String name) {
+        String tree = Prefs.vault();
+        if (tree.isEmpty()) return;
+        try {
+            Uri folder = Uri.parse(tree);
+            Uri file = find(c.getContentResolver(), folder, name);
+            if (file != null) DocumentsContract.deleteDocument(c.getContentResolver(), file);
+        } catch (Exception ignored) {
+        }
     }
 }

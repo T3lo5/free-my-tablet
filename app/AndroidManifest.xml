@@ -8,6 +8,9 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- After the tablet boots (and after an update), checks that Free My Tablet mode is still as you left it. -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Termux's permission to run commands (that is where git is). Only asked for when the person uses the
+         sync button; the app works without Termux. -->
+    <uses-permission android:name="com.termux.permission.RUN_COMMAND" />
 
     <!-- Android 11+ (package visibility): without this the app can't "see" the other apps. The launcher intent is
          the one a launcher needs: every app that can be opened. The HOME intent is what lets the system offer the

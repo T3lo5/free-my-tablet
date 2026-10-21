@@ -178,6 +178,8 @@ public class SettingsActivity extends Activity {
             out.add(Ui.tr("Tela de Início", "Home screen"));
             out.add(Ui.tr("Apps na tela", "Apps on the home screen"));
             out.add(Ui.tr("Pasta do Obsidian", "Obsidian folder"));
+            out.add(Ui.tr("Card do tempo", "Weather card"));
+            out.add(Ui.tr("Sincronizar", "Sync"));
             out.add(Ui.tr("Apps para desligar", "Apps to turn off"));
             out.add(Ui.tr("Idioma", "Language"));
             out.add(Ui.tr("Tema", "Theme"));
@@ -195,13 +197,15 @@ public class SettingsActivity extends Activity {
                         : Ui.tr("Original", "Original");
                 case 1: return Ui.tr("Escolher", "Choose");
                 case 2: return Vault.ready(activity) ? Ui.tr("Escolhida", "Chosen") : Ui.tr("Escolher", "Choose");
-                case 3: return Ui.tr("Apps que você não usa", "Apps you don't use");
-                case 4: {
+                case 3: return Prefs.weatherCard() ? Ui.tr("Ligado", "On") : Ui.tr("Desligado", "Off");
+                case 4: return Ui.tr("Ajustar", "Set up");
+                case 5: return Ui.tr("Apps que você não usa", "Apps you don't use");
+                case 6: {
                     String l = Prefs.language();
                     return "auto".equals(l) ? Ui.tr("Automático", "Automatic")
                             : "pt".equals(l) ? "Português" : "es".equals(l) ? "Español" : "English";
                 }
-                case 5: {
+                case 7: {
                     String t = Prefs.theme();
                     return "light".equals(t) ? Ui.tr("Claro", "Light") : "dark".equals(t) ? Ui.tr("Escuro", "Dark")
                             : Ui.tr("Automático", "Automatic");
@@ -325,11 +329,47 @@ public class SettingsActivity extends Activity {
                 case 0: askSwitch(); break;
                 case 1: openChecklist(FAVORITES); break;
                 case 2: Vault.pick(activity); break;
-                case 3: openChecklist(OFF_APPS); break;
-                case 4: askLanguage(); break;
-                case 5: askTheme(); break;
+                case 3:
+                    Prefs.setWeatherCard(!Prefs.weatherCard());
+                    reload();
+                    break;
+                case 4: askSync(); break;
+                case 5: openChecklist(OFF_APPS); break;
+                case 6: askLanguage(); break;
+                case 7: askTheme(); break;
                 default: askAbout(); break;
             }
+        }
+
+        /** The sync: the working folder in Termux and the command that pulls. */
+        private void askSync() {
+            android.widget.LinearLayout box = new android.widget.LinearLayout(activity);
+            box.setOrientation(android.widget.LinearLayout.VERTICAL);
+            int pad = Math.round(dp(20));
+            android.widget.EditText folder = new android.widget.EditText(activity);
+            folder.setHint(Ui.tr("A pasta do git no Termux (ex.: ~/pos-coders)", "The git folder in Termux (e.g. ~/pos-coders)"));
+            folder.setText(Prefs.syncFolder());
+            folder.setSingleLine();
+            android.widget.EditText command = new android.widget.EditText(activity);
+            command.setHint(Ui.tr("O comando do pull (ex.: git pull)", "The pull command (e.g. git pull)"));
+            command.setText(Prefs.syncCommand());
+            command.setSingleLine();
+            box.addView(folder);
+            box.addView(command);
+            box.setPadding(pad, Math.round(dp(8)), pad, 0);
+            new AlertDialog.Builder(activity)
+                    .setTitle(Ui.tr("Sincronizar", "Sync"))
+                    .setMessage(Ui.tr("A pasta do git é a de trabalho no Termux. Depois do pull, os arquivos são "
+                                    + "copiados por cima da pasta que o Obsidian lê (o .git e o .obsidian ficam).",
+                            "The git folder is the working one in Termux. After the pull, the files are copied over "
+                                    + "the folder Obsidian reads (the .git and .obsidian are kept)."))
+                    .setView(box)
+                    .setNegativeButton(Ui.tr("Cancelar", "Cancel"), null)
+                    .setPositiveButton("OK", (d, w) -> {
+                        Prefs.setSyncFolder(folder.getText().toString());
+                        Prefs.setSyncCommand(command.getText().toString());
+                    })
+                    .show();
         }
 
         private void tapChecklist(float y) {

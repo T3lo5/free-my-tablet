@@ -10,9 +10,11 @@ MAP = {
     "apps": ("apps", 1), "settings": ("settings", 1), "edit": ("edit", 1),
     "note": ("edit_note", 1), "folder": ("folder_open", 1), "check": ("check", 0),
     "close": ("close", 0), "chevron_right": ("chevron_right", 0), "chevron_down": ("keyboard_arrow_down", 0),
-    "home": ("home", 1), "search": ("search", 0), "sunny": ("sunny", 1),
-    "clear_night": ("clear_night", 1), "cloud": ("cloud", 1), "rainy": ("rainy", 1),
-    "book": ("menu_book", 1), "terminal": ("terminal", 1),
+    "home": ("home", 1), "search": ("search", 0), "sync": ("sync", 0),
+    "sunny": ("sunny", 1), "clear_night": ("clear_night", 1), "cloud": ("cloud", 1),
+    "partly_cloudy_day": ("partly_cloudy_day", 1), "partly_cloudy_night": ("partly_cloudy_night", 1),
+    "rainy": ("rainy", 1), "foggy": ("foggy", 1), "snowflake": ("ac_unit", 0),
+    "thunderstorm": ("thunderstorm", 1), "book": ("menu_book", 1), "terminal": ("terminal", 1),
 }
 
 

@@ -71,6 +71,30 @@ final class Prefs {
     static String latitude() { return Config.LATITUDE; }
     static String longitude() { return Config.LONGITUDE; }
 
+    // MARK: - The weather card
+
+    /** The card with the weather on the home screen (the person can turn it off). */
+    static boolean weatherCard() { return sp().getBoolean("weatherCard", true); }
+    static void setWeatherCard(boolean on) { put("weatherCard", on); }
+
+    // MARK: - The sync (git pull in Termux, then the copy over the vault)
+
+    /** The working folder in Termux (the one with the git clone). */
+    static String syncFolder() {
+        String v = sp().getString("syncFolder", "");
+        return v.isEmpty() ? "~/pos-coders" : v;
+    }
+
+    static void setSyncFolder(String v) { put("syncFolder", v.trim()); }
+
+    /** The command that pulls (git pull, with the arguments the person wants). */
+    static String syncCommand() {
+        String v = sp().getString("syncCommand", "");
+        return v.isEmpty() ? "git pull" : v;
+    }
+
+    static void setSyncCommand(String v) { put("syncCommand", v.trim()); }
+
     // MARK: - The favorites (the row of apps on the home screen)
 
     /** The apps on the home screen, in order; null until the person edits it (then the built-in list applies). */

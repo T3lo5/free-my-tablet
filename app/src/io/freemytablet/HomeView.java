@@ -39,7 +39,7 @@ public class HomeView extends View implements Choreographer.FrameCallback {
     private final Paint panel = new Paint();
     private final Paint rim = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint icon = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
-    private final Paint symbol = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+    private final Paint symbolPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
     private final Paint clock = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.SUBPIXEL_TEXT_FLAG);
     private final Paint label = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.SUBPIXEL_TEXT_FLAG);
     private final Paint date = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.SUBPIXEL_TEXT_FLAG);
@@ -116,6 +116,7 @@ public class HomeView extends View implements Choreographer.FrameCallback {
                 favorites.addAll(chosen);
                 setAllApps(all);
                 layoutFavorites();
+                buildBackground();     // the theme may have changed in the settings
                 invalidate();
             });
         }, "apps").start();
@@ -168,7 +169,14 @@ public class HomeView extends View implements Choreographer.FrameCallback {
 
     /** The background: the sky of the day (two tones) with a soft light on top. */
     private void buildBackground() {
-        Sky.sky(palette, System.currentTimeMillis(), Sun.sunrise(context), Sun.sunset(context));
+        String theme = Prefs.theme();
+        if ("light".equals(theme)) {
+            Sky.light(palette);
+        } else if ("dark".equals(theme)) {
+            Sky.dark(palette);
+        } else {
+            Sky.sky(palette, System.currentTimeMillis(), Sun.sunrise(context), Sun.sunset(context));
+        }
         bg.setShader(new android.graphics.LinearGradient(0, 0, 0, h, palette.color(1), palette.color(0),
                 Shader.TileMode.CLAMP));
         int light = palette.color(2);
@@ -192,9 +200,10 @@ public class HomeView extends View implements Choreographer.FrameCallback {
         c.drawRect(0, 0, w, h, bg);
         c.drawRect(0, 0, w, h, glow);
         drawClock(c);
+        drawWeather(c);
         drawFavorites(c);
         drawNote(c);
-        drawAllAppsButton(c);
+        drawButtons(c);
         drawNotice(c);
         if (allOpen) drawAll(c);
     }
@@ -206,6 +215,38 @@ public class HomeView extends View implements Choreographer.FrameCallback {
         c.drawText(clockText, x, y, clock);
         date.setColor(0xB3FFFFFF);
         c.drawText(dateText, x, y + dp(26), date);
+    }
+
+    /** The weather card, at the top right: the symbol, the temperature and the city. */
+    private void drawWeather(Canvas c) {
+        if (!Prefs.weatherCard()) return;
+        float temp = Weather.temperature(context);
+        if (temp == 0f) return;
+        int code = Weather.code(context);
+        String symbol = code < 0 ? "cloud" : Symbols.weather(code, Weather.day(context));
+        float y = dp(portrait() ? 88 : 72);
+        float x = w - dp(24);
+        String text = Math.round(temp) + "°";
+        hint.setTextSize(dp(20));
+        float tw = hint.measureText(text);
+        Bitmap bit = Symbols.get(context, symbol);
+        if (bit != null) {
+            float s = dp(26);
+            iconRect.set(x - tw - s - dp(6), y - s * 0.75f, x - tw - dp(6), y + s * 0.25f);
+            symbolPaint.setColorFilter(new android.graphics.PorterDuffColorFilter(0xFFFFFFFF,
+                    android.graphics.PorterDuff.Mode.SRC_IN));
+            c.drawBitmap(bit, null, iconRect, symbolPaint);
+        }
+        hint.setColor(0xFFFFFFFF);
+        c.drawText(text, x - tw, y, hint);
+        hint.setTextSize(dp(12));
+        String city = Prefs.city();
+        if (!city.isEmpty()) {
+            hint.setColor(0x99FFFFFF);
+            float cw = hint.measureText(city);
+            c.drawText(city, x - cw, y + dp(18), hint);
+        }
+        hint.setTextSize(dp(15));
     }
 
     /** The row with the apps you use. */
@@ -245,6 +286,9 @@ public class HomeView extends View implements Choreographer.FrameCallback {
     /** Called when the person taps the home screen outside the apps (the keyboard goes away). */
     public Runnable onOutsideTap;
 
+    /** Called when the person taps the sync button. */
+    public Runnable onSyncTap;
+
     /** The quick note: the panel the text field sits on (the field itself is a real EditText, above this). */
     private void drawNote(Canvas c) {
         panel.setColor(0x26FFFFFF);
@@ -256,27 +300,31 @@ public class HomeView extends View implements Choreographer.FrameCallback {
         if (pencil != null) {
             float s = dp(20);
             iconRect.set(noteRect.left + dp(16), cy - s / 2, noteRect.left + dp(16) + s, cy + s / 2);
-            symbol.setColorFilter(new android.graphics.PorterDuffColorFilter(0x99FFFFFF, android.graphics.PorterDuff.Mode.SRC_IN));
-            c.drawBitmap(pencil, null, iconRect, symbol);
+            symbolPaint.setColorFilter(new android.graphics.PorterDuffColorFilter(0x99FFFFFF, android.graphics.PorterDuff.Mode.SRC_IN));
+            c.drawBitmap(pencil, null, iconRect, symbolPaint);
         }
     }
 
-    /** The small button for all the other apps. */
-    private void drawAllAppsButton(Canvas c) {
+    /** The small buttons at the bottom: the sync (left) and all the apps (right). */
+    private void drawButtons(Canvas c) {
+        drawRoundButton(c, dp(24) + dp(22), h - dp(24) - dp(22), "sync");
+        drawRoundButton(c, w - dp(24) - dp(22), h - dp(24) - dp(22), "apps");
+    }
+
+    private void drawRoundButton(Canvas c, float cx, float cy, String symbol) {
         float r = dp(22);
-        float cx = w - dp(24) - r, cy = h - dp(24) - r;
         panel.setColor(0x26FFFFFF);
         tmp.set(cx - r, cy - r, cx + r, cy + r);
         c.drawRoundRect(tmp, r, r, panel);
         rim.setColor(0x33FFFFFF);
         c.drawRoundRect(tmp, r, r, rim);
-        Bitmap grid = Symbols.get(context, "apps");
-        if (grid != null) {
-            float s = dp(20);
-            iconRect.set(cx - s / 2, cy - s / 2, cx + s / 2, cy + s / 2);
-            symbol.setColorFilter(new android.graphics.PorterDuffColorFilter(0xFFFFFFFF, android.graphics.PorterDuff.Mode.SRC_IN));
-            c.drawBitmap(grid, null, iconRect, symbol);
-        }
+        Bitmap bit = Symbols.get(context, symbol);
+        if (bit == null) return;
+        float s = dp(20);
+        iconRect.set(cx - s / 2, cy - s / 2, cx + s / 2, cy + s / 2);
+        symbolPaint.setColorFilter(new android.graphics.PorterDuffColorFilter(0xFFFFFFFF,
+                android.graphics.PorterDuff.Mode.SRC_IN));
+        c.drawBitmap(bit, null, iconRect, symbolPaint);
     }
 
     /** All the apps, over the home screen (a grid you can scroll). */
@@ -380,7 +428,19 @@ public class HomeView extends View implements Choreographer.FrameCallback {
             invalidate();
             return;
         }
+        if (hitSyncButton(x, y)) {
+            click.move();
+            if (onSyncTap != null) onSyncTap.run();
+            return;
+        }
         if (onOutsideTap != null) onOutsideTap.run();
+    }
+
+    /** The sync button, at the bottom left. */
+    private boolean hitSyncButton(float x, float y) {
+        float r = dp(22);
+        float cx = dp(24) + r, cy = h - dp(24) - r;
+        return Math.abs(x - cx) <= r && Math.abs(y - cy) <= r;
     }
 
     /** Which favorite is at (x, y), or -1. */
