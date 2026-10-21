@@ -20,13 +20,14 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      # The runner already has the Android SDK (ANDROID_HOME). We only ask for the platform the tablet
+      # runs (Android 11) — the build works with a newer one too, but this keeps it honest.
       - name: The Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: What the build needs
         run: |
-          sdkmanager "build-tools;34.0.0" "platforms;android-30"
-          yes | sdkmanager --licenses > /dev/null
+          sdkmanager --install "platforms;android-30" "build-tools;34.0.0" || true
+          yes | sdkmanager --licenses > /dev/null || true
+          echo "platforms:"; ls "$ANDROID_HOME/platforms" || true
+          echo "build-tools:"; ls "$ANDROID_HOME/build-tools" || true
 
       - name: The signing key
         run: |
