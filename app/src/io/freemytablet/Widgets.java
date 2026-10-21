@@ -37,8 +37,9 @@ final class Widgets {
         intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id);
         try {
             a.startActivityForResult(intent, requestCode);
+            AppLog.w("the widget picker was asked (id " + id + ")");
         } catch (RuntimeException e) {
-            AppLog.w("no widget picker on the tablet: " + e.getMessage());
+            AppLog.w("no widget picker on the tablet: " + e);
         }
     }
 
