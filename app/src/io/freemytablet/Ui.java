@@ -129,6 +129,38 @@ final class Ui {
         return (Math.round(base * Math.max(0, Math.min(1, a))) << 24) | (color & 0xFFFFFF);
     }
 
+    // MARK: - The colors of the theme
+
+    /** Whether the theme is the light one (the warm paper). */
+    static boolean paper() {
+        return "light".equals(Prefs.theme());
+    }
+
+    /** The main text: white on the night, dark ink on the paper. */
+    static int ink() {
+        return paper() ? 0xFF2B2721 : 0xFFFFFFFF;
+    }
+
+    /** The secondary text (the date, the city). */
+    static int inkSoft() {
+        return paper() ? 0xB32B2721 : 0xB3FFFFFF;
+    }
+
+    /** The faint text (the hints, the symbols). */
+    static int inkFaint() {
+        return paper() ? 0x992B2721 : 0x99FFFFFF;
+    }
+
+    /** The panels (the note field, the buttons): a white veil on the night, a dark one on the paper. */
+    static int veil() {
+        return paper() ? 0x142B2721 : 0x26FFFFFF;
+    }
+
+    /** The rim of the panels. */
+    static int rim() {
+        return paper() ? 0x2E2B2721 : 0x33FFFFFF;
+    }
+
     static float clamp(float v) {
         return Math.max(0, Math.min(1, v));
     }

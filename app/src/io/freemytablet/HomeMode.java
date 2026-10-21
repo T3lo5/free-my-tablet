@@ -805,13 +805,39 @@ final class HomeMode {
         return out;
     }
 
-    /** The text of the newest notice (what the switch did), or "" when there is none. */
+    /** The text of the newest notice that was not shown yet (what the switch did), or "" when there is none. */
     static String lastNotice(Context c) {
         JSONArray a = state(c).optJSONArray("notices");
-        if (a == null || a.length() == 0) return "";
-        JSONObject newest = a.optJSONObject(0);
-        if (newest != null) return newest.optString("text");
-        return a.optString(0);
+        if (a == null) return "";
+        for (int i = 0; i < a.length(); i++) {
+            JSONObject notice = a.optJSONObject(i);
+            if (notice == null) continue;
+            if (notice.optBoolean("seen", false)) continue;
+            return notice.optString("text");
+        }
+        return "";
+    }
+
+    /** The notice was shown: it does not come back on the next opening of the home screen. */
+    static void markNoticeSeen(Context c, String text) {
+        JSONObject s = state(c);
+        JSONArray a = s.optJSONArray("notices");
+        if (a == null) return;
+        boolean changed = false;
+        for (int i = 0; i < a.length(); i++) {
+            JSONObject notice = a.optJSONObject(i);
+            if (notice == null) continue;
+            if (!text.equals(notice.optString("text"))) continue;
+            try {
+                notice.put("seen", true);
+                changed = true;
+            } catch (JSONException ignored) {}
+        }
+        if (!changed) return;
+        try {
+            s.put("notices", a);
+        } catch (JSONException ignored) {}
+        save(c, s);
     }
 
     private static List<String> sorted(Set<String> set) {

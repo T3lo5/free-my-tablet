@@ -2,6 +2,21 @@
 
 Everything that changed, newest first.
 
+## v1.10
+
+- **The notes of the vault are read right.** The app was asking the system for the id of the tree in a
+  document, and the paths came out wrong (and the notes of the subfolders never came at all).
+- **The quick note goes to the folder that was chosen** (the "Pasta da nota"): the folder is made when it does
+  not exist yet, and the note lands inside it.
+- **The search in the vault opens right away** and the notes show up as they are found (the walk through the
+  vault is slow: the system asks about every folder). The list is kept for a while, so the second time is
+  instant.
+- **The "light" theme is warm paper, and the text is dark on it** (the clock, the names, the weather, the note
+  field). The "automatic" theme still follows the sun.
+- **The notice of the home screen is shown once.** It used to come back every time the screen was opened.
+- The name of the file of the choices is "free-my-tablet.json" (the hidden one, with a dot at the front, the
+  system did not show it in the vault).
+
 ## v1.9
 
 - **The list of all the apps has a search.** The field on top of the list filters as you type.

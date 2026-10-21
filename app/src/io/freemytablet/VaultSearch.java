@@ -34,21 +34,33 @@ final class VaultSearch {
         int pad = Math.round(20 * a.getResources().getDisplayMetrics().density);
         field.setPadding(pad, pad, pad, pad);
         ListView list = new ListView(a);
+        TextView empty = new TextView(a);
+        empty.setText(Ui.tr("Procurando as notas…", "Looking for the notes…"));
+        empty.setTextColor(0x99FFFFFF);
+        empty.setPadding(pad, pad, pad, pad);
         box.addView(field);
         box.addView(list);
+        box.addView(empty);
+        list.setEmptyView(empty);
 
-        final List<Vault.Note> notes = new ArrayList<>(Vault.notes(a));
+        final List<Vault.Note> notes = new ArrayList<>();
         final NotesAdapter adapter = new NotesAdapter(a, notes);
         list.setAdapter(adapter);
+        // The walk through the vault is slow (the system asks about every folder): it happens apart from the
+        // screen, and the notes show up as they are found.
+        List<Vault.Note> fresh = Vault.cached();
+        if (fresh != null) {
+            notes.addAll(fresh);
+            adapter.set(filter(notes, field.getText().toString()));
+        }
+        Vault.notesStreaming(a, note -> a.runOnUiThread(() -> {
+            notes.add(note);
+            adapter.set(filter(notes, field.getText().toString()));
+        }));
         field.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int x, int y, int z) {}
             @Override public void onTextChanged(CharSequence s, int x, int y, int z) {
-                String text = s.toString().trim().toLowerCase(Locale.getDefault());
-                List<Vault.Note> found = new ArrayList<>();
-                for (Vault.Note note : notes) {
-                    if (text.isEmpty() || note.path.toLowerCase(Locale.getDefault()).contains(text)) found.add(note);
-                }
-                adapter.set(found);
+                adapter.set(filter(notes, s.toString()));
             }
             @Override public void afterTextChanged(Editable s) {}
         });
@@ -64,6 +76,16 @@ final class VaultSearch {
                 .setView(box)
                 .setNegativeButton(Ui.tr("Fechar", "Close"), null)
                 .show();
+    }
+
+    /** The notes whose path has the text. */
+    private static List<Vault.Note> filter(List<Vault.Note> notes, String text) {
+        String wanted = text == null ? "" : text.trim().toLowerCase(Locale.getDefault());
+        List<Vault.Note> found = new ArrayList<>();
+        for (Vault.Note note : notes) {
+            if (wanted.isEmpty() || note.path.toLowerCase(Locale.getDefault()).contains(wanted)) found.add(note);
+        }
+        return found;
     }
 
     /** Opens a note in Obsidian. */

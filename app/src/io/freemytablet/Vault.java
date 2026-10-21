@@ -31,6 +31,10 @@ import java.util.Locale;
 final class Vault {
     private Vault() {}
 
+    /** The notes of the last walk through the vault (kept for a while: the walk is slow). */
+    private static List<Note> cache;
+    private static long cacheAt;
+
     /** Asks the person for the folder (the system's picker). The answer comes back in onActivityResult. */
     static void pick(Activity a) {
         Intent intent = new Intent(Build.VERSION.SDK_INT >= 21 ? Intent.ACTION_OPEN_DOCUMENT_TREE : Intent.ACTION_GET_CONTENT);
@@ -55,26 +59,26 @@ final class Vault {
         String tree = Prefs.vault();
         if (tree.isEmpty() || note.trim().isEmpty()) return null;
         try {
-            Uri folder = Uri.parse(tree);
-            // The tree URI is the folder; the document URI is the folder as a document (what createDocument wants).
-            Uri document = DocumentsContract.buildDocumentUriUsingTree(folder,
-                    DocumentsContract.getTreeDocumentId(folder));
+            Uri root = Uri.parse(tree);
+            String rootId = DocumentsContract.getTreeDocumentId(root);
             ContentResolver resolver = c.getContentResolver();
             String today = new SimpleDateFormat("yyyy-MM-dd", Locale.US).format(new Date());
             String name = Ui.tr("Nota rápida ", "Quick note ") + today + ".md";
             // The folder of the note (inside the vault), made when it does not exist yet.
+            String folderId = rootId;
             String sub = Prefs.noteFolder();
             if (!sub.isEmpty()) {
-                Uri subFolder = subFolder(resolver, folder, sub);
-                if (subFolder == null) return null;
-                folder = subFolder;
+                folderId = subFolder(resolver, root, rootId, sub);
+                if (folderId == null) return null;
             }
-            Uri file = find(resolver, folder, name);
+            Uri file = find(resolver, root, folderId, name);
             boolean fresh = file == null;
             if (fresh) {
-                file = DocumentsContract.createDocument(resolver, document, "text/markdown", name);
+                Uri parent = DocumentsContract.buildDocumentUriUsingTree(root, folderId);
+                file = DocumentsContract.createDocument(resolver, parent, "text/markdown", name);
                 if (file == null) return null;
-            }            try (OutputStream out = resolver.openOutputStream(file, "rwt")) {
+            }
+            try (OutputStream out = resolver.openOutputStream(file, "rwt")) {
                 if (out == null) return null;
                 String text = fresh ? "" : "\n\n";
                 out.write(text.getBytes(StandardCharsets.UTF_8));
@@ -87,38 +91,44 @@ final class Vault {
         } catch (Exception e) {
             AppLog.w("could not save the note: " + e);
             return null;
+        } finally {
+            cache = null;   // the notes changed: the widget and the search have to look again
         }
     }
 
-    /** A folder inside the vault (made when it does not exist), or null. */
-    private static Uri subFolder(ContentResolver resolver, Uri vault, String path) throws IOException {
-        Uri current = vault;
+    /**
+     * A folder inside the vault (made when it does not exist), or null. The system is asked about the tree
+     * and the id of the folder: the tree alone is not enough to look inside a folder.
+     */
+    private static String subFolder(ContentResolver resolver, Uri tree, String documentId, String path)
+            throws IOException {
+        String current = documentId;
         for (String part : path.split("/")) {
             part = part.trim();
             if (part.isEmpty()) continue;
-            Uri child = find(resolver, current, part);
+            Uri child = find(resolver, tree, current, part);
             if (child == null) {
-                child = DocumentsContract.createDocument(resolver, current,
+                Uri parent = DocumentsContract.buildDocumentUriUsingTree(tree, current);
+                child = DocumentsContract.createDocument(resolver, parent,
                         DocumentsContract.Document.MIME_TYPE_DIR, part);
                 if (child == null) return null;
             }
-            current = child;
+            current = DocumentsContract.getDocumentId(child);
         }
         return current;
     }
 
-    /** The document with that name inside the folder, or null. */
-    private static Uri find(ContentResolver resolver, Uri folder, String name) {
+    /** The document with that name inside the folder (the tree and the id of the folder), or null. */
+    private static Uri find(ContentResolver resolver, Uri tree, String documentId, String name) {
         try {
-            Uri children = DocumentsContract.buildChildDocumentsUriUsingTree(folder,
-                    DocumentsContract.getTreeDocumentId(folder));
+            Uri children = DocumentsContract.buildChildDocumentsUriUsingTree(tree, documentId);
             try (android.database.Cursor cursor = resolver.query(children,
                     new String[] {DocumentsContract.Document.COLUMN_DOCUMENT_ID, DocumentsContract.Document.COLUMN_DISPLAY_NAME},
                     null, null, null)) {
                 if (cursor == null) return null;
                 while (cursor.moveToNext()) {
                     if (!name.equals(cursor.getString(1))) continue;
-                    return DocumentsContract.buildDocumentUriUsingTree(folder, cursor.getString(0));
+                    return DocumentsContract.buildDocumentUriUsingTree(tree, cursor.getString(0));
                 }
             }
         } catch (Exception e) {
@@ -157,14 +167,14 @@ final class Vault {
         String tree = Prefs.vault();
         if (tree.isEmpty()) return false;
         try {
-            Uri folder = Uri.parse(tree);
-            Uri document = DocumentsContract.buildDocumentUriUsingTree(folder,
-                    DocumentsContract.getTreeDocumentId(folder));
+            Uri root = Uri.parse(tree);
+            String rootId = DocumentsContract.getTreeDocumentId(root);
             ContentResolver resolver = c.getContentResolver();
-            Uri file = find(resolver, folder, name);
+            Uri file = find(resolver, root, rootId, name);
             boolean fresh = file == null;
             if (fresh) {
-                file = DocumentsContract.createDocument(resolver, document, mimeType, name);
+                Uri parent = DocumentsContract.buildDocumentUriUsingTree(root, rootId);
+                file = DocumentsContract.createDocument(resolver, parent, mimeType, name);
                 if (file == null) return false;
             }
             try (OutputStream out = resolver.openOutputStream(file, "rwt")) {
@@ -183,9 +193,12 @@ final class Vault {
         String tree = Prefs.vault();
         if (tree.isEmpty()) return null;
         try {
-            Uri folder = Uri.parse(tree);
-            Uri file = find(c.getContentResolver(), folder, name);
-            if (file == null) return null;
+            Uri root = Uri.parse(tree);
+            Uri file = find(c.getContentResolver(), root, DocumentsContract.getTreeDocumentId(root), name);
+            if (file == null) {
+                AppLog.w("the file is not in the vault: " + name);
+                return null;
+            }
             try (InputStream in = c.getContentResolver().openInputStream(file)) {
                 if (in == null) return null;
                 ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -195,6 +208,7 @@ final class Vault {
                 return new String(out.toByteArray(), StandardCharsets.UTF_8);
             }
         } catch (Exception e) {
+            AppLog.w("could not read the file: " + e.getMessage());
             return null;
         }
     }
@@ -204,8 +218,8 @@ final class Vault {
         String tree = Prefs.vault();
         if (tree.isEmpty()) return;
         try {
-            Uri folder = Uri.parse(tree);
-            Uri file = find(c.getContentResolver(), folder, name);
+            Uri root = Uri.parse(tree);
+            Uri file = find(c.getContentResolver(), root, DocumentsContract.getTreeDocumentId(root), name);
             if (file != null) DocumentsContract.deleteDocument(c.getContentResolver(), file);
         } catch (Exception ignored) {
         }
@@ -226,52 +240,101 @@ final class Vault {
         }
     }
 
+    /** Called with each note found while the app walks through the vault. */
+    interface NoteSink {
+        void note(Note note);
+    }
+
     /** The notes of the vault, the most recent first (the folders are looked into too). */
     static List<Note> notes(Context c) {
+        List<Note> fresh = cached();
+        if (fresh != null) return fresh;
         List<Note> out = new ArrayList<>();
-        String tree = Prefs.vault();
-        if (tree.isEmpty()) return out;
-        try {
-            Uri folder = Uri.parse(tree);
-            String id = DocumentsContract.getTreeDocumentId(folder);
-            int slash = id.lastIndexOf('/');
-            String vault = slash < 0 ? id : id.substring(slash + 1);
-            walk(c.getContentResolver(), folder, folder, "", vault, out, 0);
-        } catch (Exception e) {
-            AppLog.w("could not read the notes: " + e.getMessage());
-        }
+        walk(c, new NoteSink() {
+            @Override public void note(Note note) {
+                out.add(note);
+            }
+        });
+        sortByDate(out);
+        cache = out;
+        cacheAt = System.currentTimeMillis();
+        return new ArrayList<>(out);
+    }
+
+    /**
+     * The notes, one by one as they are found: the walk through the vault is slow (the system asks about
+     * every folder), so the screen shows what it has while the rest is being looked for.
+     */
+    static void notesStreaming(Context c, final NoteSink sink) {
+        new Thread(() -> {
+            List<Note> out = new ArrayList<>();
+            walk(c, new NoteSink() {
+                @Override public void note(Note note) {
+                    out.add(note);
+                    sink.note(note);
+                }
+            });
+            sortByDate(out);
+            cache = out;
+            cacheAt = System.currentTimeMillis();
+        }, "vault").start();
+    }
+
+    /** The notes of the last walk (the same list, when it is still fresh). */
+    static List<Note> cached() {
+        if (cache == null || System.currentTimeMillis() - cacheAt > 120000) return null;
+        return new ArrayList<>(cache);
+    }
+
+    /** The most recent note first. */
+    private static void sortByDate(List<Note> out) {
         Collections.sort(out, new Comparator<Note>() {
             @Override public int compare(Note a, Note b) {
                 return Long.compare(b.modified, a.modified);
             }
         });
-        return out;
     }
 
-    /** Looks through a folder and the ones inside it (up to three levels, sixty notes). */
-    private static void walk(ContentResolver resolver, Uri tree, Uri folder, String prefix, String vault,
-            List<Note> out, int depth) {
+    /** Looks through the vault and gives each note to the sink. */
+    private static void walk(Context c, NoteSink sink) {
+        String tree = Prefs.vault();
+        if (tree.isEmpty()) return;
+        try {
+            Uri folder = Uri.parse(tree);
+            String id = DocumentsContract.getTreeDocumentId(folder);
+            int slash = id.lastIndexOf('/');
+            String vault = slash < 0 ? id : id.substring(slash + 1);
+            walk(c.getContentResolver(), folder, DocumentsContract.getTreeDocumentId(folder), "", vault,
+                    sink, 0, new int[1]);
+        } catch (Exception e) {
+            AppLog.w("could not read the notes: " + e.getMessage());
+        }
+    }
+
+    /** Looks through a folder and the ones inside it (up to three levels, a hundred notes). */
+    private static void walk(ContentResolver resolver, Uri tree, String documentId, String prefix, String vault,
+            NoteSink sink, int depth, int[] count) {
         try {
             // The children of a folder: the tree (the one the person gave) and the id of the folder.
-            Uri children = DocumentsContract.buildChildDocumentsUriUsingTree(tree,
-                    DocumentsContract.getDocumentId(folder));
+            Uri children = DocumentsContract.buildChildDocumentsUriUsingTree(tree, documentId);
             try (android.database.Cursor cursor = resolver.query(children,
                     new String[] {DocumentsContract.Document.COLUMN_DOCUMENT_ID,
                             DocumentsContract.Document.COLUMN_DISPLAY_NAME,
                             DocumentsContract.Document.COLUMN_MIME_TYPE,
                             DocumentsContract.Document.COLUMN_LAST_MODIFIED}, null, null, null)) {
                 if (cursor == null) return;
-                while (cursor.moveToNext() && out.size() < 60) {
+                while (cursor.moveToNext() && count[0] < 100) {
                     String name = cursor.getString(1);
                     String mime = cursor.getString(2);
                     if (name == null || name.startsWith(".")) continue;
                     if (DocumentsContract.Document.MIME_TYPE_DIR.equals(mime)) {
                         if (depth < 3) {
-                            walk(resolver, tree, DocumentsContract.buildDocumentUriUsingTree(tree, cursor.getString(0)),
-                                    prefix + name + "/", vault, out, depth + 1);
+                            walk(resolver, tree, cursor.getString(0), prefix + name + "/", vault, sink, depth + 1,
+                                    count);
                         }
                     } else if (name.endsWith(".md")) {
-                        out.add(new Note(name.substring(0, name.length() - 3), prefix + name, vault,
+                        count[0]++;
+                        sink.note(new Note(name.substring(0, name.length() - 3), prefix + name, vault,
                                 cursor.getLong(3)));
                     }
                 }

@@ -220,9 +220,8 @@ public class SettingsActivity extends Activity {
                 case HOME: return Ui.tr("Tela de Início", "Home screen");
                 case ON_SCREEN: return Ui.tr("Apps na tela", "Apps on the home screen");
                 case VAULT: return Ui.tr("Pasta do Obsidian", "Obsidian folder");
-                case NOTE_FOLDER: return Prefs.noteFolder().isEmpty() ? Ui.tr("A raiz do vault", "The vault root")
-                        : Prefs.noteFolder();
-                case VAULT_SEARCH: return Ui.tr("Procurar uma nota", "Find a note");
+                case NOTE_FOLDER: return Ui.tr("Pasta da nota", "Note folder");
+                case VAULT_SEARCH: return Ui.tr("Buscar no vault", "Search the vault");
                 case WEATHER: return Ui.tr("Card do tempo", "Weather card");
                 case WIDGET: return Ui.tr("Widget", "Widget");
                 case SYNC: return Ui.tr("Sincronizar", "Sync");
@@ -248,7 +247,7 @@ public class SettingsActivity extends Activity {
                 case VAULT: return Vault.ready(activity) ? Ui.tr("Escolhida", "Chosen") : Ui.tr("Escolher", "Choose");
                 case NOTE_FOLDER: return Prefs.noteFolder().isEmpty() ? Ui.tr("A raiz do vault", "The vault root")
                         : Prefs.noteFolder();
-                case VAULT_SEARCH: return Ui.tr("Procurar uma nota", "Find a note");
+                case VAULT_SEARCH: return Ui.tr("Abrir", "Open");
                 case WEATHER: return Prefs.weatherCard() ? Ui.tr("Ligado", "On") : Ui.tr("Desligado", "Off");
                 case WIDGET: return Prefs.widgetId() == 0 ? Ui.tr("Escolher", "Choose") : Ui.tr("Colocado", "Placed");
                 case SYNC: return Ui.tr("Ajustar", "Set up");
@@ -727,9 +726,18 @@ public class SettingsActivity extends Activity {
             field.setText(Prefs.noteFolder());
             field.setHint(Ui.tr("Ex.: 01 - Diário (vazio = a raiz)", "e.g. 01 - Diary (empty = the root)"));
             field.setSingleLine();
+            field.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_DONE);
             int pad = Math.round(dp(20));
             field.setPadding(pad, Math.round(dp(12)), pad, 0);
-            new AlertDialog.Builder(activity)
+            final android.app.AlertDialog[] dialog = new android.app.AlertDialog[1];
+            field.setOnEditorActionListener((v, actionId, event) -> {
+                // The "done" key of the keyboard saves, like the button does.
+                Prefs.setNoteFolder(field.getText().toString());
+                if (dialog[0] != null) dialog[0].dismiss();
+                reload();
+                return true;
+            });
+            dialog[0] = new AlertDialog.Builder(activity)
                     .setTitle(Ui.tr("Pasta da nota", "Note folder"))
                     .setView(field)
                     .setNegativeButton(Ui.tr("Cancelar", "Cancel"), null)

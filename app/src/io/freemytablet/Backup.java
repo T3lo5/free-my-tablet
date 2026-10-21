@@ -16,7 +16,7 @@ import java.util.List;
 final class Backup {
     private Backup() {}
 
-    static final String NAME = ".free-my-tablet.json";
+    static final String NAME = "free-my-tablet.json";
 
     /** The choices, as JSON. */
     static String json(Context c) {

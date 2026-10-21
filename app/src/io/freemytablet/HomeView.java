@@ -254,9 +254,9 @@ public class HomeView extends View implements Choreographer.FrameCallback {
     private void drawClock(Canvas c) {
         float x = dp(24);
         float y = dp(portrait() ? 92 : 76);
-        clock.setColor(0xFFFFFFFF);
+        clock.setColor(Ui.ink());
         c.drawText(clockText, x, y, clock);
-        date.setColor(0xB3FFFFFF);
+        date.setColor(Ui.inkSoft());
         c.drawText(dateText, x, y + dp(26), date);
     }
 
@@ -276,16 +276,16 @@ public class HomeView extends View implements Choreographer.FrameCallback {
         if (bit != null) {
             float s = dp(26);
             iconRect.set(x - tw - s - dp(6), y - s * 0.75f, x - tw - dp(6), y + s * 0.25f);
-            symbolPaint.setColorFilter(new android.graphics.PorterDuffColorFilter(0xFFFFFFFF,
+            symbolPaint.setColorFilter(new android.graphics.PorterDuffColorFilter(Ui.ink(),
                     android.graphics.PorterDuff.Mode.SRC_IN));
             c.drawBitmap(bit, null, iconRect, symbolPaint);
         }
-        hint.setColor(0xFFFFFFFF);
+        hint.setColor(Ui.ink());
         c.drawText(text, x - tw, y, hint);
         hint.setTextSize(dp(12));
         String city = Prefs.city();
         if (!city.isEmpty()) {
-            hint.setColor(0x99FFFFFF);
+            hint.setColor(Ui.inkSoft());
             float cw = hint.measureText(city);
             c.drawText(city, x - cw, y + dp(18), hint);
         }
@@ -307,7 +307,7 @@ public class HomeView extends View implements Choreographer.FrameCallback {
             float cx = slot * col + slot / 2;
             float cy = startY + row * rowH + iconSize / 2;
             drawIcon(c, item, cx, cy, i == focus);
-            label.setColor(0xE6FFFFFF);
+            label.setColor(Ui.ink());
             c.drawText(item.label, cx - label.measureText(item.label) / 2, cy + iconSize / 2 + dp(18), label);
         }
     }
@@ -320,7 +320,7 @@ public class HomeView extends View implements Choreographer.FrameCallback {
             c.drawBitmap(b, null, iconRect, icon);
         }
         if (focused) {
-            focusRing.setColor(0xFFFFFFFF);
+            focusRing.setColor(Ui.ink());
             tmp.set(cx - half - dp(4), cy - half - dp(4), cx + half + dp(4), cy + half + dp(4));
             c.drawRoundRect(tmp, dp(10), dp(10), focusRing);
         }
@@ -353,16 +353,16 @@ public class HomeView extends View implements Choreographer.FrameCallback {
 
     /** The quick note: the panel the text field sits on (the field itself is a real EditText, above this). */
     private void drawNote(Canvas c) {
-        panel.setColor(0x26FFFFFF);
+        panel.setColor(Ui.veil());
         c.drawRoundRect(noteRect, dp(20), dp(20), panel);
-        rim.setColor(0x33FFFFFF);
+        rim.setColor(Ui.rim());
         c.drawRoundRect(noteRect, dp(20), dp(20), rim);
         float cy = noteRect.centerY();
         Bitmap pencil = Symbols.get(context, "edit");
         if (pencil != null) {
             float s = dp(20);
             iconRect.set(noteRect.left + dp(16), cy - s / 2, noteRect.left + dp(16) + s, cy + s / 2);
-            symbolPaint.setColorFilter(new android.graphics.PorterDuffColorFilter(0x99FFFFFF, android.graphics.PorterDuff.Mode.SRC_IN));
+            symbolPaint.setColorFilter(new android.graphics.PorterDuffColorFilter(Ui.inkFaint(), android.graphics.PorterDuff.Mode.SRC_IN));
             c.drawBitmap(pencil, null, iconRect, symbolPaint);
         }
     }
@@ -375,10 +375,10 @@ public class HomeView extends View implements Choreographer.FrameCallback {
 
     private void drawRoundButton(Canvas c, float cx, float cy, String symbol) {
         float r = dp(22);
-        panel.setColor(0x26FFFFFF);
+        panel.setColor(Ui.veil());
         tmp.set(cx - r, cy - r, cx + r, cy + r);
         c.drawRoundRect(tmp, r, r, panel);
-        rim.setColor(0x33FFFFFF);
+        rim.setColor(Ui.rim());
         c.drawRoundRect(tmp, r, r, rim);
         Bitmap bit = Symbols.get(context, symbol);
         if (bit == null) return;
@@ -652,7 +652,7 @@ public class HomeView extends View implements Choreographer.FrameCallback {
         panel.setColor(Ui.alpha(0xFF101828, 0.9f * alpha));
         tmp.set(x, y, x + tw, y + dp(38));
         c.drawRoundRect(tmp, dp(19), dp(19), panel);
-        hint.setColor(Ui.alpha(0xFFFFFFFF, alpha));
+        hint.setColor(Ui.alpha(0xFFFFFFFF, alpha));   // the panel is dark in every theme
         hint.setTextSize(dp(13));
         c.drawText(noticeText, x + dp(16), y + dp(24), hint);
         hint.setTextSize(dp(15));

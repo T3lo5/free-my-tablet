@@ -99,6 +99,8 @@ public class HomeActivity extends Activity {
                 if (lastNotices != id) {
                     lastNotices = id;
                     if (home != null) home.notice(notice);
+                    // It was shown: the next opening of the home screen does not repeat it.
+                    new Thread(() -> HomeMode.markNoticeSeen(HomeActivity.this, notice), "notice").start();
                 }
             }
             handler.postDelayed(this, 2000);
@@ -237,11 +239,11 @@ public class HomeActivity extends Activity {
         hideKeyboard(search);
     }
 
-    /** The quick note field: white text on the panel, one line, the system's keyboard. */
+    /** The quick note field: the text in the color of the theme, one line, the system's keyboard. */
     private void styleNote() {
         note.setBackgroundColor(Color.TRANSPARENT);
-        note.setTextColor(Color.WHITE);
-        note.setHintTextColor(0x80FFFFFF);
+        note.setTextColor(Ui.ink());
+        note.setHintTextColor(Ui.inkFaint());
         note.setHint(Ui.tr("Escreva uma nota…", "Write a note…"));
         note.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
         note.setTypeface(Ui.regular);
@@ -339,6 +341,7 @@ public class HomeActivity extends Activity {
             if (prefsVersion != Prefs.version) {   // the favorites or the theme changed in the settings
                 prefsVersion = Prefs.version;
                 home.reload();
+                styleNote();     // the note field takes the color of the theme
             }
             home.resume();
         }
