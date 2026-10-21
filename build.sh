@@ -65,13 +65,14 @@ EOF
 
 # --- Version: from the tag (or from the environment, when the build is not in a git checkout)
 VERSION="${FREE_MY_TABLET_VERSION:-}"
+VERSION="${VERSION#v}"                       # the tag is "v1.1", the version is "1.1"
 if [ -z "$VERSION" ]; then
   # The tag of the build (the version). The container may not own the checkout: git is told to trust it.
   VERSION="$( { git -c safe.directory='*' describe --tags --abbrev=0 2>/dev/null || true; } | sed 's/^v//')"
 fi
 [ -n "$VERSION" ] || VERSION="1.0"
 # The version code has to grow: 1.1 -> 101, 1.10 -> 110, 2.0 -> 200
-CODE="$(printf '%s' "$VERSION" | awk -F'[.-]' '{printf "%d%02d", ($1=="")?0:$1, ($2=="")?0:$2}')"
+CODE="$(printf '%s' "$VERSION" | awk -F'[.-]' '{printf "%d%02d", $1+0, $2+0}')"
 echo "Building version $VERSION (code $CODE)"
 
 # --- Build
