@@ -53,28 +53,26 @@ final class HomeMode {
      * the apps you installed are never touched.
      */
     static final String[] DEBLOAT = {
-        // Microsoft (the Office suite, OneDrive and Teams, on every Samsung tablet)
+        // Samsung's store and its extras
+        "com.sec.android.app.samsungapps",        // Galaxy Store
+        "com.sec.android.widgetapp.samsungapps",  // Galaxy Store (the widget)
+        "com.samsung.android.themecenter",        // Galaxy Themes
+        "com.samsung.android.app.clockpackage",   // Samsung Clock (the widget; the system's clock stays)
+        "com.samsung.android.stickercenter",      // Sticker Center (the emoji pack)
+        "com.samsung.android.smartswitchassistant",  // Smart Switch (moving data from the old phone)
+        "com.samsung.android.rubin.app",          // Customization Service
+        "com.sec.android.app.chromecustomizations",   // ChromeCustomizations (the menu it adds to Chrome)
+        "com.sec.android.usermanual",             // User Manual
+        "com.sec.android.app.servicemodeapp",     // Service mode
+        "com.sec.android.app.factorykeystring",
+        // Microsoft (the Office suite and OneDrive, on some tablets)
+        "com.microsoft.skydrive",
         "com.microsoft.office.outlook", "com.microsoft.office.word", "com.microsoft.office.excel",
         "com.microsoft.office.powerpoint", "com.microsoft.office.onenote", "com.microsoft.office.excelviewer",
-        "com.microsoft.skydrive", "com.microsoft.office.365mobileapps", "com.microsoft.teams",
+        "com.microsoft.office.365mobileapps", "com.microsoft.teams",
         // Social networks (preinstalled, no account, only notifications)
         "com.facebook.services", "com.facebook.system", "com.facebook.appmanager", "com.facebook.katana",
         "com.linkedin.android",
-        // Samsung's store and its extras
-        "com.sec.android.app.samsungapps",        // Galaxy Store
-        "com.sec.android.app.samsungapps.uac",    // Galaxy Store (updates)
-        "com.samsung.android.smartswitchassistant",  // Smart Switch (moving data from the old phone)
-        "com.sec.android.easyMover.Agent",         // Easy Mover
-        "com.sec.android.da.daagent",              // Dual Messenger
-        "com.samsung.android.knox.securefolder",   // Secure Folder
-        "com.samsung.android.knox.knoxsetup",
-        "com.sec.android.app.kidshome",            // Samsung Kids (a second launcher)
-        "com.samsung.android.game.gametools",      // Game Plugins (the popup over your games)
-        "com.sec.android.game.overlay",
-        "com.sec.android.app.sservice",            // Galaxy Store's helper
-        "com.sec.android.icloud.da",               // iCloud
-        "com.samsung.android.app.hiddensearch",
-        "com.samsung.android.bixbyvision.framework",
     };
 
     /**
@@ -82,20 +80,28 @@ final class HomeMode {
      * others. The tablet keeps them on by default.
      */
     static final String[] OPTIONAL = {
-        "com.samsung.android.bixby.agent",         // Bixby (the assistant)
+        "com.google.android.googlequicksearchbox",    // Google (the news feed and the search widget)
+        "com.google.android.apps.tachyon",             // Google Meet
+        "com.samsung.android.game.gos",                // Game Optimizing Service
+        "com.samsung.android.scloud",                  // Samsung Cloud
+        "com.sec.android.app.soundalive",              // SoundAlive
+        "com.sec.android.daemonapp",                   // Weather (Samsung)
+        "com.sec.android.app.dressroom",               // Wallpapers
+        "com.samsung.android.app.sharelive",           // Quick Share
+        "com.samsung.android.app.sbrowser",            // Samsung Internet
+        "com.google.android.apps.books",               // Google Play Books
+        "com.google.android.apps.magazines",           // Google Play Magazines
+        "com.google.android.apps.music",               // Google Play Music
+        "com.google.android.videos",                   // Google Play Movies
+        "com.google.android.youtube.tvmusic",           // YouTube Music
+        "com.samsung.android.app.shealth",             // Samsung Health
+        "com.samsung.android.app.arzone",              // AR Zone
+        "com.samsung.android.aremoji",                 // AR Emoji
+        "com.samsung.android.app.gamehome",            // Game Launcher
+        "com.sec.android.app.kidshome",                // Samsung Kids (a second launcher)
+        "com.samsung.android.bixby.agent",             // Bixby
         "com.samsung.android.bixby.wakeup",
-        "com.sec.android.app.sbrowser",             // Samsung Internet
-        "com.google.android.apps.books",           // Google Play Books
-        "com.google.android.apps.magazines",       // Google Play Magazines
-        "com.google.android.apps.music",           // Google Play Music
-        "com.google.android.videos",               // Google Play Movies
-        "com.google.android.youtube.tvmusic",       // YouTube Music
-        "com.samsung.android.app.shealth",         // Samsung Health
-        "com.samsung.android.app.arzone",          // AR Zone
-        "com.samsung.android.aremoji",             // AR Emoji
-        "com.samsung.android.app.gamehome",        // Game Launcher
-        "com.sec.android.app.soundalive",          // Audio sharing
-        "com.sec.android.app.samsungapps.assetmarket",
+        "com.samsung.android.bixbyvision.framework",
     };
 
     /** The voice assistant, only with disable_assistant=true in config.properties. */
@@ -107,13 +113,26 @@ final class HomeMode {
         "com.android.providers.settings", "com.android.providers.media", "com.android.providers.downloads",
         "com.android.certinstaller", "com.android.packageinstaller", "com.android.permissioncontroller",
         "com.android.phone", "com.android.bluetooth", "com.android.nfc", "com.android.printspooler",
+        "com.android.documentsui", "com.android.externalstorage",
         "com.google.android.gms", "com.google.android.gsf", "com.android.vending", "com.google.android.inputmethod.latin",
         "com.google.android.webview", "com.google.android.apps.wellbeing", "com.google.android.projection.gearhead",
-        "com.samsung.android.app.settings", "com.samsung.android.emergency",          // Settings and SOS
-        "com.samsung.android.knox.securefolder", "com.samsung.android.knox.knoxsetup",
-        "com.sec.android.providers.securewallpaper", "com.sec.android.providers.calendar",
-        "com.sec.android.gallery3d", "com.samsung.android.app.contacts",
-        "com.sec.android.providers.downloads", "com.android.vending", PKG));
+        "com.google.android.setupwizard", "com.google.android.documentsui",
+        "com.google.android.captiveportallogin",       // the page that opens when the Wi-Fi asks for a login
+        "com.samsung.android.app.settings", "com.sec.android.app.settings",
+        "com.samsung.android.honeyboard", "com.sec.android.inputmethod",   // the keyboards
+        "com.samsung.android.emergency", "com.sec.android.emergencylauncher", "com.sec.android.provider.emergencymode",
+        "com.samsung.android.fmm", "com.samsung.android.mdm", "com.samsung.android.sdm.config",
+        "com.samsung.android.sm.devicesecurity", "com.samsung.android.securitylogagent",
+        "com.samsung.android.bluelightfilter",        // the night mode (nice for reading)
+        "com.samsung.android.dialer", "com.samsung.android.incallui", "com.samsung.android.telephonyui",
+        "com.samsung.android.providers.media", "com.samsung.android.providers.contacts",
+        "com.samsung.android.providers.carrier", "com.samsung.android.calendar",
+        "com.samsung.android.app.contacts", "com.samsung.android.email.provider",
+        "com.samsung.android.app.notes", "com.samsung.android.app.clockpackage",
+        "com.sec.android.gallery3d", "com.sec.android.app.camera", "com.sec.android.app.myfiles",
+        "com.sec.android.app.launcher",               // Samsung's own home screen: it stays (the way back)
+        "com.sec.android.app.samsungapps.uac",
+        PKG));
 
     /** One switch at a time (jobs can overlap: a boot check and a button press). */
     private static final Object RUN = new Object();
@@ -456,12 +475,7 @@ final class HomeMode {
      */
     private static List<String> targets(String home, boolean setupHome) {
         List<String> out = new ArrayList<>();
-        String homePkg = packageOf(home);
-        if (homePkg != null && !homePkg.equals(PKG)) out.add(homePkg);
-        if (setupHome) {
-            out.add(GOOGLE_SETUP);
-            out.add(SAMSUNG_SETUP);
-        }
+        // The tablet's own home screen stays enabled: the switch is the HOME role, and the way back needs it there.
         out.addAll(Arrays.asList(DEBLOAT));
         out.addAll(optionalOff());
         if (Config.DISABLE_ASSISTANT) out.addAll(Arrays.asList(ASSISTANT));

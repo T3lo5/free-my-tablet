@@ -2,6 +2,7 @@ package io.freemytablet;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Paint;
@@ -49,7 +50,8 @@ public class HomeView extends View implements Choreographer.FrameCallback {
 
     // Layout
     private int w, h;
-    private float density, iconSize, labelSize, clockSize, noteTop, noteH, rowH, perRow;
+    private float density, iconSize, labelSize, clockSize, noteTop, noteH, rowH;
+    private int perRow = 5;
     private final RectF noteRect = new RectF();
 
     // All apps (the overlay)
@@ -113,6 +115,7 @@ public class HomeView extends View implements Choreographer.FrameCallback {
                 favorites.clear();
                 favorites.addAll(chosen);
                 setAllApps(all);
+                layoutFavorites();
                 invalidate();
             });
         }, "apps").start();
@@ -133,6 +136,14 @@ public class HomeView extends View implements Choreographer.FrameCallback {
         Choreographer.getInstance().postFrameCallback(this);
     }
 
+    /** The row of apps: the number of columns, balanced (six apps make two rows of three, not five and one). */
+    private void layoutFavorites() {
+        int count = favorites.size();
+        int max = portrait() ? 5 : 7;
+        int rows = Math.max(1, (int) Math.ceil(count / (float) max));
+        perRow = Math.max(1, (int) Math.ceil(count / (float) rows));
+    }
+
     // MARK: - Layout
 
     @Override protected void onSizeChanged(int width, int height, int oldWidth, int oldHeight) {
@@ -148,7 +159,6 @@ public class HomeView extends View implements Choreographer.FrameCallback {
         noteH = dp(58);
         noteTop = h - (portrait ? dp(132) : dp(104));
         noteRect.set(pad, noteTop, w - pad, noteTop + noteH);
-        perRow = portrait ? 5 : 7;
         clock.setTextSize(clockSize);
         label.setTextSize(labelSize);
         date.setTextSize(dp(14));
@@ -201,7 +211,7 @@ public class HomeView extends View implements Choreographer.FrameCallback {
     /** The row with the apps you use. */
     private void drawFavorites(Canvas c) {
         if (favorites.isEmpty()) return;
-        int rows = (int) Math.ceil(favorites.size() / perRow);
+        int rows = (int) Math.ceil(favorites.size() / (float) perRow);
         float top = dp(portrait() ? 150 : 120);
         float bottom = noteTop - dp(24);
         float blockH = rows * rowH;
@@ -209,7 +219,7 @@ public class HomeView extends View implements Choreographer.FrameCallback {
         float slot = w / perRow;
         for (int i = 0; i < favorites.size(); i++) {
             HomeApps.Item item = favorites.get(i);
-            int col = i % (int) perRow, row = i / (int) perRow;
+            int col = i % perRow, row = i / perRow;
             float cx = slot * col + slot / 2;
             float cy = startY + row * rowH + iconSize / 2;
             drawIcon(c, item, cx, cy, i == focus);
@@ -271,7 +281,7 @@ public class HomeView extends View implements Choreographer.FrameCallback {
 
     /** All the apps, over the home screen (a grid you can scroll). */
     private void drawAll(Canvas c) {
-        panel.setColor(0xF20B0F1E);
+        panel.setColor(0xFF0B0F1E);
         c.drawRect(0, 0, w, h, panel);
         hint.setColor(0xCCFFFFFF);
         c.drawText(Ui.tr("Todos os apps", "All apps"), dp(24), dp(46), hint);
@@ -306,6 +316,11 @@ public class HomeView extends View implements Choreographer.FrameCallback {
     }
 
     private boolean portrait() {
+        // The tablet's own orientation, not the view's shape: with the keyboard open the window is shorter than
+        // it is wide, and the screen would change the layout for nothing.
+        int orientation = getResources().getConfiguration().orientation;
+        if (orientation == Configuration.ORIENTATION_PORTRAIT) return true;
+        if (orientation == Configuration.ORIENTATION_LANDSCAPE) return false;
         return h >= w;
     }
 
@@ -371,17 +386,17 @@ public class HomeView extends View implements Choreographer.FrameCallback {
     /** Which favorite is at (x, y), or -1. */
     private int hitFavorites(float x, float y) {
         if (favorites.isEmpty()) return -1;
-        int rows = (int) Math.ceil(favorites.size() / perRow);
+        int rows = (int) Math.ceil(favorites.size() / (float) perRow);
         float top = dp(portrait() ? 150 : 120);
         float bottom = noteTop - dp(24);
         float blockH = rows * rowH;
         float startY = top + Math.max(0, (bottom - top - blockH) / 2f);
         float slot = w / perRow;
         int col = (int) (x / slot);
-        if (col < 0 || col >= (int) perRow) return -1;
+        if (col < 0 || col >= perRow) return -1;
         int row = (int) ((y - startY) / rowH);
         if (row < 0 || row >= rows) return -1;
-        int index = row * (int) perRow + col;
+        int index = row * perRow + col;
         return index < favorites.size() ? index : -1;
     }
 
@@ -453,7 +468,7 @@ public class HomeView extends View implements Choreographer.FrameCallback {
             case KeyEvent.KEYCODE_DPAD_UP:
             case KeyEvent.KEYCODE_DPAD_DOWN: {
                 if (focus < 0) focus = 0;
-                int per = (int) perRow;
+                int per = perRow;
                 int col = focus % per, row = focus / per;
                 if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) col = Math.max(0, col - 1);
                 if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) col = Math.min(per - 1, col + 1);

@@ -60,10 +60,11 @@ final class HomeApps {
      */
     private static final String[] DEFAULT_FAVORITES = {
             "md.obsidian",                       // Obsidian
-            "com.google.android.youtube",        // YouTube
+            "org.readera",                       // ReadEra (reading)
             "com.termux",                        // Termux
-            "com.android.chrome",                // the browser
-            "com.sec.android.app.sbrowser",      // Samsung Internet
+            "com.google.android.youtube",        // YouTube
+            "org.chromium.webapk.a4cd8e42e8282fcd4_v2",   // Astron Members (a web app)
+            "org.chromium.webapk.a638aa1485b7de616_v2",   // CODERS (a web app)
     };
 
     private static final Map<String, Bitmap> ICONS = new HashMap<>();

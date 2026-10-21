@@ -35,12 +35,13 @@ final class Sky {
         }
     }
 
-    // Sky phases through the day.
-    private static final int[] NIGHT = {0x070B1E, 0x16225A, 0x4B2F8F};
-    private static final int[] DAWN = {0x24183F, 0xE89A55, 0xF6D59A};
-    private static final int[] DAY = {0x1E57C8, 0x4FB9EC, 0x9EE2EE};
-    private static final int[] SUNSET = {0x2E1650, 0xE2546C, 0xF39A4F};
-    private static final int[] DUSK = {0x10173A, 0x36348A, 0x8A4BB0};
+    // Sky phases through the day. Deeper than the TV's: on a small screen the white text needs the contrast,
+    // and a tablet that is read on deserves a calm sky, not a bright one.
+    private static final int[] NIGHT = {0x05081A, 0x101B45, 0x3E277A};
+    private static final int[] DAWN = {0x1E1436, 0xD98A4C, 0xEFCB8E};
+    private static final int[] DAY = {0x0E2E6B, 0x1F5FA8, 0x5FA8D4};
+    private static final int[] SUNSET = {0x2A1145, 0xC24357, 0xE8894A};
+    private static final int[] DUSK = {0x0C1230, 0x2B2A70, 0x6E3C90};
 
     /**
      * Palette for the sun's current position at your location. Uses the sunrise and sunset times from the last

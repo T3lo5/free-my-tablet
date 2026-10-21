@@ -53,7 +53,13 @@ public class HomeActivity extends Activity {
         @Override protected void onLayout(boolean changed, int l, int t, int r, int b) {
             super.onLayout(changed, l, t, r, b);
             RectF rect = home.noteBounds();
-            note.layout(Math.round(rect.left), Math.round(rect.top), Math.round(rect.right), Math.round(rect.bottom));
+            int left = Math.round(rect.left), top = Math.round(rect.top);
+            int right = Math.round(rect.right), bottom = Math.round(rect.bottom);
+            // Measured again with the exact size: the field was measured with the whole screen, and a text field
+            // keeps its text in the middle of the height it was measured with (it would draw out of sight).
+            note.measure(View.MeasureSpec.makeMeasureSpec(right - left, View.MeasureSpec.EXACTLY),
+                    View.MeasureSpec.makeMeasureSpec(bottom - top, View.MeasureSpec.EXACTLY));
+            note.layout(left, top, right, bottom);
         }
     }
 
