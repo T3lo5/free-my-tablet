@@ -132,18 +132,31 @@ final class Update {
         return file;
     }
 
-    /** Hands the downloaded APK to the system's installer. */
+    /**
+     * Hands the downloaded APK to the system's installer.
+     *
+     * It goes straight to the installer (and not through the system's "open with" chooser): the chooser can lose
+     * the permission to read the file, and the installer would then say that the package is broken.
+     */
     static void install(Context c, File file) {
         ApkProvider.setFile(file);
         Uri uri = ApkProvider.URI;
-        Intent intent = new Intent(Intent.ACTION_VIEW);
-        intent.setDataAndType(uri, "application/vnd.android.package-archive");
+        Intent intent = new Intent(Intent.ACTION_INSTALL_PACKAGE);
+        intent.setData(uri);
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         try {
             c.startActivity(intent);
         } catch (RuntimeException e) {
-            AppLog.w("could not open the installer: " + e.getMessage());
+            AppLog.w("the installer did not take it: " + e.getMessage());
+            Intent view = new Intent(Intent.ACTION_VIEW);
+            view.setDataAndType(uri, "application/vnd.android.package-archive");
+            view.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+            try {
+                c.startActivity(view);
+            } catch (RuntimeException e2) {
+                AppLog.w("could not open the installer: " + e2.getMessage());
+            }
         }
     }
 

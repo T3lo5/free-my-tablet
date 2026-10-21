@@ -2,6 +2,11 @@
 
 Everything that changed, newest first.
 
+## v1.4
+
+- **The update opens the installer directly.** It went through the system's "open with" chooser, and the chooser
+  can lose the permission to read the file: the installer then said the package was broken.
+
 ## v1.3
 
 - **The update works end to end.** The installer could not read the downloaded APK (the provider was too strict
