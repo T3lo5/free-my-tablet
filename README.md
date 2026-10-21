@@ -19,7 +19,16 @@ A tablet from 2019 is slow, and the manufacturer's home screen is half of the re
 more apps, it shows you what it wants you to see, and it takes a while to open. Free My Tablet replaces it with
 one screen that draws fast and shows only what you chose.
 
-This is the sibling of [Free My TV](https://freemytv.io): the same ideas and the same code, for a tablet.
+## Inspiration
+
+This is the sibling of **[Free My TV](https://freemytv.io)** — the same ideas, the same code style and the same
+safety net, but for a tablet instead of a TV: the touch instead of the remote, the notes and the weather
+instead of the trending titles, and a home screen that rests (0% of the CPU) instead of animating all day.
+
+The TV project is the reference for the parts that are not about the screen itself: the switch between the
+app and the manufacturer's home screen (through the tablet's own ADB), the lists of what to turn off and what
+never to touch, the watchdog that gives the home screen back if it crashes three times, and the rule that
+nothing is ever uninstalled.
 
 ## What you get
 
@@ -149,6 +158,7 @@ nothing else. Your settings stay on your tablet.
 ## Credits
 
 - Built with [Claude Code](https://claude.com/claude-code).
+- Inspired by [Free My TV](https://freemytv.io) — the same family, for TVs.
 - Weather data by [Open-Meteo.com](https://open-meteo.com/) (CC BY 4.0).
 - Icons: [Material Symbols](https://fonts.google.com/icons) (Apache 2.0). Font: [Inter](https://rsms.me/inter/)
   (SIL OFL 1.1).
@@ -157,3 +167,6 @@ nothing else. Your settings stay on your tablet.
 ## License
 
 [MIT](LICENSE). Fork it, change it, ship it.
+
+The research behind the choices — the complaints people have about tablets, and how to make one use less —
+is in [`docs/pesquisa.md`](docs/pesquisa.md) (in Portuguese, with the numbers measured on the tablet).
