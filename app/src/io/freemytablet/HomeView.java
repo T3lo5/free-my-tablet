@@ -557,8 +557,9 @@ public class HomeView extends View implements Choreographer.FrameCallback {
                 }
                 return true;
             case KeyEvent.KEYCODE_BACK:
-                if (allOpen) { closeAll(); return true; }
-                break;
+                // The home screen never leaves: back closes the list of apps, or does nothing.
+                closeAll();
+                return true;
             default:
                 break;
         }
