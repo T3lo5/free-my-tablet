@@ -38,11 +38,6 @@ final class Prefs {
         version++;
     }
 
-    private static void put(String key, int value) {
-        sp().edit().putInt(key, value).apply();
-        version++;
-    }
-
     // MARK: - Language and units
 
     /** "auto", "pt", "es" or "en". */
@@ -76,21 +71,21 @@ final class Prefs {
     static String latitude() { return Config.LATITUDE; }
     static String longitude() { return Config.LONGITUDE; }
 
-    // MARK: - The dock (the row of apps at the bottom)
+    // MARK: - The favorites (the row of apps on the home screen)
 
-    /** Apps on the dock, in order; null until the user edits it (then the built-in list applies). */
-    static List<String> shelf() {
-        String v = sp().getString("shelf", null);
+    /** The apps on the home screen, in order; null until the person edits it (then the built-in list applies). */
+    static List<String> favorites() {
+        String v = sp().getString("favorites", null);
         if (v == null) return null;
         List<String> out = new ArrayList<>();
         for (String p : v.split(",")) if (!p.isEmpty()) out.add(p);
         return out;
     }
 
-    static void setShelf(List<String> packages) {
+    static void setFavorites(List<String> packages) {
         StringBuilder sb = new StringBuilder();
         for (String p : packages) sb.append(sb.length() == 0 ? "" : ",").append(p);
-        put("shelf", sb.toString());
+        put("favorites", sb.toString());
     }
 
     // MARK: - The apps turned off (the optional ones)
@@ -108,4 +103,13 @@ final class Prefs {
         for (String p : packages) sb.append(sb.length() == 0 ? "" : ",").append(p);
         put("optionalOff", sb.toString());
     }
+
+    // MARK: - The vault (the Obsidian folder for the quick note)
+
+    /** The folder the quick note is saved in (a SAF tree URI), or "" when there is none yet. */
+    static String vault() {
+        return sp().getString("vault", "");
+    }
+
+    static void setVault(String uri) { put("vault", uri); }
 }

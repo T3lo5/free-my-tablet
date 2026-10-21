@@ -58,6 +58,7 @@
             android:clearTaskOnLaunch="true"
             android:resumeWhilePausing="true"
             android:excludeFromRecents="true"
+            android:windowSoftInputMode="adjustResize"
             android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|screenLayout|smallestScreenSize|uiMode|density|fontScale|locale|layoutDirection"
             android:theme="@style/FreeMyTablet.Home">
             <intent-filter>

@@ -7,25 +7,40 @@ final class Spanish {
     static String text(String english) {
         switch (english) {
             case "All apps": return "Todas las apps";
+            case "Write a note…": return "Escribe una nota…";
             case "Home screen": return "Pantalla de inicio";
+            case "Apps on the home screen": return "Apps en la pantalla de inicio";
+            case "Obsidian folder": return "Carpeta de Obsidian";
             case "Apps to turn off": return "Apps para desactivar";
-            case "Dock": return "Barra de apps";
             case "Language": return "Idioma";
             case "Theme": return "Tema";
             case "About": return "Acerca de";
             case "Original": return "Original";
-            case "Apps you don't use": return "Apps que no usas";
             case "Choose": return "Elegir";
+            case "Chosen": return "Elegida";
+            case "Apps you don't use": return "Apps que no usas";
             case "Automatic": return "Automático";
             case "Light": return "Claro";
             case "Dark": return "Oscuro";
             case "Cancel": return "Cancelar";
             case "Turn on": return "Activar";
             case "Turn on Free My Tablet?": return "¿Activar Free My Tablet?";
-            case "Go back": return "Volver";
-            case "Go back to the original?": return "¿Volver al original?";
-            case "Português": return "Portugués";
-            case "Español": return "Español";
+            case "Go back to the original home screen": return "Volver a la pantalla de inicio original";
+            case "You chose not to change the home screen.": return "Elegiste no cambiar la pantalla de inicio.";
+            case "Original mode: the tablet's own home screen is back.":
+                return "Modo original: volvió la pantalla de inicio del tablet.";
+            case "Obsidian folder chosen. The quick notes go there.":
+                return "Carpeta de Obsidian elegida. Las notas rápidas van allí.";
+            case "Pick the tablet's own home screen (One UI Home) in the system's window.":
+                return "Elige la pantalla de inicio del tablet (One UI Home) en la ventana del sistema.";
+            case "Open the system's home picker (press and hold the Home button) and pick the tablet's own home screen.":
+                return "Abre el selector de inicio del sistema (mantén pulsado el botón Inicio) y elige la pantalla "
+                        + "de inicio del tablet.";
+            case "Note saved: ": return "Nota guardada: ";
+            case "I couldn't save the note. Check that the Obsidian folder is still there.":
+                return "No pude guardar la nota. Comprueba que la carpeta de Obsidian siga ahí.";
+            case "Without the Obsidian folder the note can't be saved.":
+                return "Sin la carpeta de Obsidian la nota no se puede guardar.";
             case "Connecting…": return "Conectando…";
             case "Measuring the original home screen…": return "Midiendo la pantalla de inicio original…";
             case "Switching the home screen…": return "Cambiando la pantalla de inicio…";
@@ -53,10 +68,8 @@ final class Spanish {
                 return "El tablet se actualizó; Free My Tablet sigue activo.";
             case "Accept “Allow USB debugging?” on the tablet (tick “Always allow”).":
                 return "Acepta “¿Permitir depuración USB?” en el tablet (marca “Permitir siempre”).";
-            case "We go back to the tablet's original home screen and turn the apps back on. Nothing is uninstalled.":
-                return "Volvemos a la pantalla de inicio original del tablet y reactivamos las apps. Nada se desinstala.";
-            case "The home screen becomes Free My Tablet: a light home screen, with no ads, and the apps you don't use are turned off (never uninstalled). The tablet will ask to allow debugging: accept it once.":
-                return "La pantalla de inicio se vuelve Free My Tablet: una pantalla de inicio leve, sin anuncios, y las apps que no usas se desactivan (nunca se desinstalan). El tablet pedirá permiso de depuración: acéptalo una vez.";
+            case "The home screen becomes Free My Tablet: a light home screen, with no ads, and the apps you don't use are turned off (never uninstalled).":
+                return "La pantalla de inicio se vuelve Free My Tablet: una pantalla de inicio leve, sin anuncios, y las apps que no usas se desactivan (nunca se desinstalan).";
             case "Version ": return "Versión ";
             case "A light home screen, with no ads, for your tablet.":
                 return "Una pantalla de inicio leve, sin anuncios, para tu tablet.";

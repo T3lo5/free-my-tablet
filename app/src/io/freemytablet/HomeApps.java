@@ -21,9 +21,10 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * The apps on the tablet: the grid of icons, the dock at the bottom and the ones that stay out of it.
- * The list comes from the system (the apps that can be opened), sorted by label; the dock is the person's
- * choice (Prefs.shelf) and falls back to a small built-in list.
+ * The apps on the tablet: the favorites on the home screen, all the others in "all the apps", and the ones that
+ * stay out of both.
+ * The list comes from the system (the apps that can be opened), sorted by label; the favorites are the person's
+ * choice (Prefs.favorites) and fall back to a small built-in list.
  * The icons are drawn once into a bitmap of a fixed size and kept: the home screen redraws them every frame
  * and a Drawable is too expensive to draw that often.
  */
@@ -44,19 +45,25 @@ final class HomeApps {
         }
     }
 
-    /** Never on the grid: our own app, the setup wizards and the apps with no icon. */
+    /** Never on the screen: our own app, the setup wizards and the apps with no icon. */
     private static final Set<String> HIDDEN = new HashSet<>(Arrays.asList(
             "io.freemytablet",
             "com.samsung.android.setupwizard",
             "com.google.android.tungsten.setupwraith",
-            "com.android.vending",       // the Play Store: it is in the dock, not in the grid
+            "com.android.vending",       // the Play Store: it stays out of the way
             "com.sec.android.app.launcher"  // Samsung's own home screen (off in Free mode)
     ));
 
-    /** The dock before the person picks their own: the apps everyone opens. */
-    private static final String[] DEFAULT_DOCK = {
-            "com.android.chrome", "com.whatsapp", "com.google.android.youtube",
-            "com.google.android.gm", "com.netflix.mediaclient"
+    /**
+     * The favorites before the person picks their own: the apps a tablet like this is used for. Only the ones
+     * that are installed show up.
+     */
+    private static final String[] DEFAULT_FAVORITES = {
+            "md.obsidian",                       // Obsidian
+            "com.google.android.youtube",        // YouTube
+            "com.termux",                        // Termux
+            "com.android.chrome",                // the browser
+            "com.sec.android.app.sbrowser",      // Samsung Internet
     };
 
     private static final Map<String, Bitmap> ICONS = new HashMap<>();
@@ -64,7 +71,7 @@ final class HomeApps {
     // MARK: - The lists
 
     /** Every app that can be opened, sorted by label (the language's order, not the system's). */
-    static List<Item> grid(Context c) {
+    static List<Item> all(Context c) {
         PackageManager pm = c.getPackageManager();
         List<Item> out = new ArrayList<>();
         List<ResolveInfo> resolved = pm.queryIntentActivities(new Intent(Intent.ACTION_MAIN)
@@ -89,12 +96,12 @@ final class HomeApps {
         return out;
     }
 
-    /** The dock: the person's choice, or the built-in list (only the apps that are there). */
-    static List<Item> dock(Context c, List<Item> grid) {
-        List<String> wanted = Prefs.shelf();
-        if (wanted == null) wanted = Arrays.asList(DEFAULT_DOCK);
+    /** The favorites: the person's choice, or the built-in list (only the apps that are there). */
+    static List<Item> favorites(Context c, List<Item> all) {
+        List<String> wanted = Prefs.favorites();
+        if (wanted == null) wanted = Arrays.asList(DEFAULT_FAVORITES);
         Map<String, Item> byPkg = new HashMap<>();
-        for (Item item : grid) byPkg.put(item.pkg, item);
+        for (Item item : all) byPkg.put(item.pkg, item);
         List<Item> out = new ArrayList<>();
         for (String pkg : wanted) {
             Item item = byPkg.get(pkg);
@@ -103,12 +110,12 @@ final class HomeApps {
         return out;
     }
 
-    /** The apps installed but not in the dock (for the dock editor in the settings). */
-    static List<Item> others(Context c, List<Item> grid) {
-        Set<String> inDock = new HashSet<>();
-        for (Item item : dock(c, grid)) inDock.add(item.pkg);
+    /** The apps that are not on the home screen (for the picker in the settings). */
+    static List<Item> others(Context c, List<Item> all) {
+        Set<String> inFavorites = new HashSet<>();
+        for (Item item : favorites(c, all)) inFavorites.add(item.pkg);
         List<Item> out = new ArrayList<>();
-        for (Item item : grid) if (!inDock.contains(item.pkg)) out.add(item);
+        for (Item item : all) if (!inFavorites.contains(item.pkg)) out.add(item);
         return out;
     }
 

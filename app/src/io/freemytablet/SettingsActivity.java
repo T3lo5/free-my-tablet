@@ -40,23 +40,37 @@ public class SettingsActivity extends Activity {
         getWindow().setBackgroundDrawable(null);
     }
 
-    /** The user picked the home screen in the system's dialog. */
+    /** The user picked the home screen in the system's dialog, or the Obsidian folder. */
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode != REQ_ROLE) return;
-        if (resultCode != RESULT_OK) {
-            view.notice(Ui.tr("Você escolheu não trocar o Início.", "You chose not to change the home screen."));
+        if (requestCode == REQ_ROLE) {
+            if (resultCode != RESULT_OK) {
+                view.notice(Ui.tr("Você escolheu não trocar o Início.", "You chose not to change the home screen."));
+                return;
+            }
+            if (HomeMode.roleHeld(this)) {
+                // Ours: the switch goes on (and turns the apps off, when the ADB is open).
+                HomeMode.request(this, HomeMode.FREE);
+            } else {
+                // The tablet's own launcher: the way back is done.
+                HomeMode.markOriginal(this);
+                view.notice(Ui.tr("Modo original: o Início do tablet voltou.",
+                        "Original mode: the tablet's own home screen is back."));
+            }
             return;
         }
-        if (HomeMode.roleHeld(this)) {
-            // Ours: the switch goes on (and turns the apps off, when the ADB is open).
-            HomeMode.request(this, HomeMode.FREE);
-        } else {
-            // The tablet's own launcher: the way back is done.
-            HomeMode.markOriginal(this);
-            view.notice(Ui.tr("Modo original: o Início do tablet voltou.",
-                    "Original mode: the tablet's own home screen is back."));
+        if (requestCode != HomeActivity.REQ_VAULT) return;
+        if (resultCode != RESULT_OK || data == null || data.getData() == null) return;
+        try {
+            getContentResolver().takePersistableUriPermission(data.getData(),
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+        } catch (RuntimeException e) {
+            AppLog.w("could not keep the folder permission: " + e.getMessage());
         }
+        Prefs.setVault(data.getData().toString());
+        view.reload();
+        view.notice(Ui.tr("Pasta do Obsidian escolhida. As notas rápidas vão para lá.",
+                "Obsidian folder chosen. The quick notes go there."));
     }
 
     @Override protected void onResume() {
@@ -105,7 +119,7 @@ public class SettingsActivity extends Activity {
         private long lastFrame;
         private String statusText = "";
 
-        static final int MAIN = 0, OFF_APPS = 1, DOCK = 2;
+        static final int MAIN = 0, FAVORITES = 1, OFF_APPS = 2;
 
         SettingsView(Activity a) {
             super(a);
@@ -123,6 +137,12 @@ public class SettingsActivity extends Activity {
             lastFrame = 0;
             Choreographer.getInstance().postFrameCallback(this);
             handler.post(poll);
+        }
+
+        /** Reads the rows again (the vault was chosen, the mode changed). */
+        void reload() {
+            rows = mainRows();
+            invalidate();
         }
 
         void pause() {
@@ -156,8 +176,9 @@ public class SettingsActivity extends Activity {
         private List<String> mainRows() {
             List<String> out = new ArrayList<>();
             out.add(Ui.tr("Tela de Início", "Home screen"));
+            out.add(Ui.tr("Apps na tela", "Apps on the home screen"));
+            out.add(Ui.tr("Pasta do Obsidian", "Obsidian folder"));
             out.add(Ui.tr("Apps para desligar", "Apps to turn off"));
-            out.add(Ui.tr("Barra de apps", "Dock"));
             out.add(Ui.tr("Idioma", "Language"));
             out.add(Ui.tr("Tema", "Theme"));
             out.add(Ui.tr("Sobre", "About"));
@@ -172,14 +193,15 @@ public class SettingsActivity extends Activity {
                 case 0: return HomeMode.FREE.equals(mode)
                         ? Ui.tr("Free My Tablet", "Free My Tablet")
                         : Ui.tr("Original", "Original");
-                case 1: return Ui.tr("Apps que você não usa", "Apps you don't use");
-                case 2: return Ui.tr("Escolher", "Choose");
-                case 3: {
+                case 1: return Ui.tr("Escolher", "Choose");
+                case 2: return Vault.ready(activity) ? Ui.tr("Escolhida", "Chosen") : Ui.tr("Escolher", "Choose");
+                case 3: return Ui.tr("Apps que você não usa", "Apps you don't use");
+                case 4: {
                     String l = Prefs.language();
                     return "auto".equals(l) ? Ui.tr("Automático", "Automatic")
                             : "pt".equals(l) ? "Português" : "es".equals(l) ? "Español" : "English";
                 }
-                case 4: {
+                case 5: {
                     String t = Prefs.theme();
                     return "light".equals(t) ? Ui.tr("Claro", "Light") : "dark".equals(t) ? Ui.tr("Escuro", "Dark")
                             : Ui.tr("Automático", "Automatic");
@@ -238,7 +260,7 @@ public class SettingsActivity extends Activity {
 
         private String title() {
             return screen == OFF_APPS ? Ui.tr("Apps para desligar", "Apps to turn off")
-                    : Ui.tr("Barra de apps", "Dock");
+                    : Ui.tr("Apps na tela", "Apps on the home screen");
         }
 
         /** The checklist: the apps, with a box on the ones that are picked. */
@@ -301,10 +323,11 @@ public class SettingsActivity extends Activity {
             if (index < 0 || index >= rows.size()) return;
             switch (index) {
                 case 0: askSwitch(); break;
-                case 1: openChecklist(OFF_APPS); break;
-                case 2: openChecklist(DOCK); break;
-                case 3: askLanguage(); break;
-                case 4: askTheme(); break;
+                case 1: openChecklist(FAVORITES); break;
+                case 2: Vault.pick(activity); break;
+                case 3: openChecklist(OFF_APPS); break;
+                case 4: askLanguage(); break;
+                case 5: askTheme(); break;
                 default: askAbout(); break;
             }
         }
@@ -323,7 +346,7 @@ public class SettingsActivity extends Activity {
         private void openChecklist(int which) {
             screen = which;
             scroll = 0;
-            apps = HomeApps.grid(activity);
+            apps = HomeApps.all(activity);
             picked = new ArrayList<>();
             if (which == OFF_APPS) {
                 // Only the apps that are in the optional list can be turned off.
@@ -332,8 +355,8 @@ public class SettingsActivity extends Activity {
                 apps = only;
                 for (String pkg : Prefs.optionalOff()) if (isOptional(pkg)) picked.add(pkg);
             } else {
-                List<String> shelf = Prefs.shelf();
-                if (shelf != null) picked.addAll(shelf);
+                List<String> chosen = Prefs.favorites();
+                if (chosen != null) picked.addAll(chosen);
             }
             invalidate();
         }
@@ -441,7 +464,7 @@ public class SettingsActivity extends Activity {
             if (screen == OFF_APPS) {
                 Prefs.setOptionalOff(picked);
             } else {
-                Prefs.setShelf(picked);
+                Prefs.setFavorites(picked);
             }
         }
     }
