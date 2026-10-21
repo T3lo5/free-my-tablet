@@ -372,29 +372,18 @@ public class SettingsActivity extends Activity {
             boolean free = HomeMode.FREE.equals(state.optString("mode", HomeMode.ORIGINAL));
             if (free) {
                 // Back to the tablet's own home screen: with the ADB open it is automatic, without it the system's
-                // own dialog asks the user to pick the tablet's launcher.
-                if (Adb.isOpen()) {
-                    HomeMode.request(activity, HomeMode.ORIGINAL);
-                    return;
-                }
-                Intent role = HomeMode.roleIntent(activity);
-                if (role != null) {
-                    new AlertDialog.Builder(activity)
-                            .setTitle(Ui.tr("Voltar ao Início original", "Go back to the original home screen"))
-                            .setMessage(Ui.tr("Escolha o Início do tablet (One UI Home) na janela do sistema.",
-                                    "Pick the tablet's own home screen (One UI Home) in the system's window."))
-                            .setNegativeButton(Ui.tr("Cancelar", "Cancel"), null)
-                            .setPositiveButton(Ui.tr("Escolher", "Choose"), (d, w) -> activity.startActivityForResult(role, REQ_ROLE))
-                            .show();
-                } else {
-                    new AlertDialog.Builder(activity)
-                            .setTitle(Ui.tr("Voltar ao Início original", "Go back to the original home screen"))
-                            .setMessage(Ui.tr("Abra o seletor de Início do sistema (segure o botão Início) e escolha o "
-                                            + "Início do tablet.",
-                                    "Open the system's home picker (press and hold the Home button) and pick the "
-                                            + "tablet's own home screen."))
-                            .setPositiveButton("OK", null).show();
-                }
+                // own dialog asks the user to pick the tablet's launcher. The check opens a socket: it has to run
+                // off the UI thread (Android kills the app for network on the main thread).
+                new Thread(() -> {
+                    boolean open = Adb.isOpen();
+                    activity.runOnUiThread(() -> {
+                        if (open) {
+                            HomeMode.request(activity, HomeMode.ORIGINAL);
+                            return;
+                        }
+                        askRoleBack();
+                    });
+                }, "adb-check").start();
                 return;
             }
             String message = Ui.tr("O Início vira o Free My Tablet: uma tela de início leve, sem propaganda, "
@@ -407,6 +396,28 @@ public class SettingsActivity extends Activity {
                     .setNegativeButton(Ui.tr("Cancelar", "Cancel"), null)
                     .setPositiveButton(Ui.tr("Ligar", "Turn on"), (d, w) -> turnOn())
                     .show();
+        }
+
+        /** Without the ADB: the system's own dialog asks the user to pick the tablet's launcher. */
+        private void askRoleBack() {
+            Intent role = HomeMode.roleIntent(activity);
+            if (role != null) {
+                new AlertDialog.Builder(activity)
+                        .setTitle(Ui.tr("Voltar ao Início original", "Go back to the original home screen"))
+                        .setMessage(Ui.tr("Escolha o Início do tablet (One UI Home) na janela do sistema.",
+                                "Pick the tablet's own home screen (One UI Home) in the system's window."))
+                        .setNegativeButton(Ui.tr("Cancelar", "Cancel"), null)
+                        .setPositiveButton(Ui.tr("Escolher", "Choose"), (d, w) -> activity.startActivityForResult(role, REQ_ROLE))
+                        .show();
+                return;
+            }
+            new AlertDialog.Builder(activity)
+                    .setTitle(Ui.tr("Voltar ao Início original", "Go back to the original home screen"))
+                    .setMessage(Ui.tr("Abra o seletor de Início do sistema (segure o botão Início) e escolha o "
+                                    + "Início do tablet.",
+                            "Open the system's home picker (press and hold the Home button) and pick the "
+                                    + "tablet's own home screen."))
+                    .setPositiveButton("OK", null).show();
         }
 
         /** Become the home screen: the system's own dialog (Android 10+) or the tablet's ADB (Android 9). */

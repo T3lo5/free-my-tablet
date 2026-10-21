@@ -10,11 +10,17 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <!-- Android 11+ (package visibility): without this the app can't "see" the other apps. The launcher intent is
-         the one a launcher needs: every app that can be opened. -->
+         the one a launcher needs: every app that can be opened. The HOME intent is what lets the system offer the
+         home app role (the dialog to choose the home screen). -->
     <queries>
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.HOME" />
+            <category android:name="android.intent.category.DEFAULT" />
         </intent>
     </queries>
 

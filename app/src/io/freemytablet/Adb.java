@@ -112,7 +112,10 @@ final class Adb implements Closeable {
         }
     }
 
-    /** Whether the tablet's own ADB is listening (after "adb tcpip 5555" from the computer). */
+    /**
+     * Whether the tablet's own ADB is listening (after "adb tcpip 5555" from the computer).
+     * It opens a socket: it cannot run on the UI thread (Android kills the app for that).
+     */
     static boolean isOpen() {
         Socket s = new Socket();
         try {

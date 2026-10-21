@@ -221,34 +221,29 @@ final class HomeMode {
         // The home screen: from Android 10 on, the role was already given by the system (the settings screen asked
         // for it). On Android 9 there is no role, and it goes through the tablet's own ADB.
         boolean homeOk = roleHeld(c);
-        if (!homeOk) {
-            try (Adb adb = connect(c, s)) {
-                homeOk = setHomeWithAdb(c, adb);
-            } catch (IOException e) {
-                AppLog.w("could not reach the tablet's ADB: " + e.getMessage());
-            }
-        }
-        if (!homeOk) {
-            done(c, Ui.tr("O Android não aceitou o novo Início. Sem ADB no tablet, use o seletor de Início do "
-                            + "sistema (segure o botão Início) e escolha o Free My Tablet.",
-                    "Android didn't accept the new home screen. Without the tablet's ADB, use the system's own home "
-                            + "picker (press and hold the Home button) and pick Free My Tablet."));
-            return;
-        }
-        s = state(c);
-        put(s, "roleHeld", true);
-        save(c, s);
-        // The apps: through the tablet's own ADB (the port is open after "adb tcpip 5555"). Without it the home
-        // screen still works: only the apps stay on.
         int turned = 0;
+        // One connection for everything: the tablet only asks for the debugging permission once.
         try (Adb adb = connect(c, s)) {
-            turned = turnAppsOff(c, adb);
+            if (!homeOk) homeOk = setHomeWithAdb(c, adb);
+            if (homeOk) turned = turnAppsOff(c, adb);
         } catch (IOException e) {
+            AppLog.w("could not reach the tablet's ADB: " + e.getClass().getSimpleName() + ": " + e.getMessage());
+            if (!homeOk) {
+                done(c, Ui.tr("O Android não aceitou o novo Início. Sem ADB no tablet, use o seletor de Início do "
+                                + "sistema (segure o botão Início) e escolha o Free My Tablet.",
+                        "Android didn't accept the new home screen. Without the tablet's ADB, use the system's own "
+                                + "home picker (press and hold the Home button) and pick Free My Tablet."));
+                return;
+            }
             notice(c, Ui.tr("O Início novo está no lugar. Os apps não puderam ser desligados: o ADB do tablet não está "
                             + "aberto (\"adb tcpip 5555\" pelo computador).",
                     "The new home screen is in place. The apps could not be turned off: the tablet's ADB is not open "
                             + "(run \"adb tcpip 5555\" from your computer)."));
         }
+        if (!homeOk) return;
+        s = state(c);
+        put(s, "roleHeld", true);
+        save(c, s);
         Watchdog.clear(c);
         s = state(c);
         put(s, "mode", FREE);
@@ -321,7 +316,8 @@ final class HomeMode {
     private static void applyOriginal(Context c) {
         JSONObject s = state(c);
         // The home screen back to the tablet's own: the recorded home is set again through the ADB. Without it
-        // (the port closed), the settings screen asks the user to pick the tablet's launcher in the system's dialog.
+        // (the port closed), nothing changes: the settings screen says so and the person picks the tablet's
+        // launcher in the system's dialog.
         boolean homeOk = false;
         List<String> failed = new ArrayList<>();
         try (Adb adb = connect(c, s)) {
@@ -330,7 +326,12 @@ final class HomeMode {
             busy(c, Ui.tr("Religando os apps…", "Turning the apps back on…"));
             failed = turnAppsOn(c, adb);
         } catch (IOException e) {
-            AppLog.w("could not reach the tablet's ADB: " + e.getMessage());
+            AppLog.w("could not reach the tablet's ADB: " + e.getClass().getSimpleName() + ": " + e.getMessage());
+            done(c, Ui.tr("Não deu para voltar ao original: o ADB do tablet não está aberto "
+                            + "(\"adb tcpip 5555\" pelo computador, com o tablet ligado pelo USB).",
+                    "I couldn't go back to the original: the tablet's ADB is not open "
+                            + "(run \"adb tcpip 5555\" from your computer, with the tablet plugged in)."));
+            return;   // nothing changed: the state stays as it was
         }
         s = state(c);
         put(s, "mode", ORIGINAL);
@@ -426,7 +427,9 @@ final class HomeMode {
             } catch (JSONException ignored) {}
             if (!FREE.equals(s.optString("mode"))) return;
             List<String> fixed = new ArrayList<>();
-            try (Adb adb = Adb.connect(app, 10_000, null)) {
+            try (Adb adb = Adb.connect(app, 45_000, () -> notice(app, Ui.tr(
+                    "Aceite o aviso \"Permitir depuração\" no tablet (marque \"Sempre permitir\").",
+                    "Accept \"Allow USB debugging?\" on the tablet (tick \"Always allow\").")))) {
                 Set<String> present = packages(adb, "");
                 Set<String> disabledNow = packages(adb, "-d");
                 Set<String> owners = wifiOwners(adb);
@@ -717,6 +720,15 @@ final class HomeMode {
         JSONArray a = s.optJSONArray(key);
         if (a != null) for (int i = 0; i < a.length(); i++) out.add(a.optString(i));
         return out;
+    }
+
+    /** The text of the newest notice (what the switch did), or "" when there is none. */
+    static String lastNotice(Context c) {
+        JSONArray a = state(c).optJSONArray("notices");
+        if (a == null || a.length() == 0) return "";
+        JSONObject newest = a.optJSONObject(0);
+        if (newest != null) return newest.optString("text");
+        return a.optString(0);
     }
 
     private static List<String> sorted(Set<String> set) {

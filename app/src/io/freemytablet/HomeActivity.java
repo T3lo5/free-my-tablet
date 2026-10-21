@@ -20,9 +20,7 @@ import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.TextView;
 
-import org.json.JSONObject;
 
-import java.util.List;
 
 /**
  * The Free My Tablet home screen (Android's "Home" role in Free My Tablet mode). It runs in the :home process: if it
@@ -67,13 +65,12 @@ public class HomeActivity extends Activity {
     private final Runnable poll = new Runnable() {
         @Override public void run() {
             if (!running) return;
-            JSONObject state = HomeMode.state(HomeActivity.this);
-            List<String> notices = HomeMode.stringList(state, "notices");
-            if (!notices.isEmpty()) {
-                int id = notices.get(0).hashCode();
+            String notice = HomeMode.lastNotice(HomeActivity.this);
+            if (!notice.isEmpty()) {
+                int id = notice.hashCode();
                 if (lastNotices != id) {
                     lastNotices = id;
-                    if (home != null) home.notice(notices.get(0));
+                    if (home != null) home.notice(notice);
                 }
             }
             handler.postDelayed(this, 2000);
@@ -146,14 +143,19 @@ public class HomeActivity extends Activity {
             Vault.pick(this);
             return;
         }
-        String file = Vault.save(this, text);
-        if (file == null) {
-            home.notice(Ui.tr("Não consegui salvar a nota. See se a pasta do Obsidian ainda está lá.",
-                    "I couldn't save the note. Check that the Obsidian folder is still there."));
-            return;
-        }
-        note.setText("");
-        home.notice(Ui.tr("Nota salva: ", "Note saved: ") + file);
+        // Writing the file is disk work: it does not belong on the UI thread.
+        new Thread(() -> {
+            String file = Vault.save(this, text);
+            runOnUiThread(() -> {
+                if (file == null) {
+                    home.notice(Ui.tr("Não consegui salvar a nota. See se a pasta do Obsidian ainda está lá.",
+                            "I couldn't save the note. Check that the Obsidian folder is still there."));
+                    return;
+                }
+                note.setText("");
+                home.notice(Ui.tr("Nota salva: ", "Note saved: ") + file);
+            });
+        }, "save-note").start();
     }
 
     /** The folder was picked: the note that was waiting goes in. */
@@ -176,11 +178,15 @@ public class HomeActivity extends Activity {
         if (!pendingNote.isEmpty()) {
             String text = pendingNote;
             pendingNote = "";
-            String file = Vault.save(this, text);
-            note.setText("");
-            home.notice(file == null
-                    ? Ui.tr("Não consegui salvar a nota.", "I couldn't save the note.")
-                    : Ui.tr("Nota salva: ", "Note saved: ") + file);
+            new Thread(() -> {
+                String file = Vault.save(this, text);
+                runOnUiThread(() -> {
+                    note.setText("");
+                    home.notice(file == null
+                            ? Ui.tr("Não consegui salvar a nota.", "I couldn't save the note.")
+                            : Ui.tr("Nota salva: ", "Note saved: ") + file);
+                });
+            }, "save-note").start();
         }
     }
 
