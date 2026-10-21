@@ -129,6 +129,7 @@ final class Update {
         } finally {
             connection.disconnect();
         }
+        AppLog.w("the new APK was downloaded: " + file.length() + " bytes");
         return file;
     }
 

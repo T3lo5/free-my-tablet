@@ -2,6 +2,11 @@
 
 Everything that changed, newest first.
 
+## v1.6
+
+- The path of the downloaded APK is written at once: the installer reads the file right away, and the other
+  process has to see it right away too.
+
 ## v1.5
 
 - **The installer finds the APK.** The provider of the app runs in the main process and the screen in the ":home"

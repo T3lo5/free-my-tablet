@@ -146,9 +146,14 @@ final class Prefs {
 
     // MARK: - The downloaded APK (the provider of the app reads it, from another process)
 
-    /** Where the downloaded APK is (the installer reads it from there). */
+    /** Where the downloaded APK is (the installer reads it from there, from another process). */
     static String apkPath() { return sp().getString("apkPath", ""); }
-    static void setApkPath(String path) { put("apkPath", path); }
+
+    /** Written at once: the other process has to see it right away (the installer reads the file now). */
+    static void setApkPath(String path) {
+        sp().edit().putString("apkPath", path).commit();
+        version++;
+    }
 
     // MARK: - The widget on the home screen
 
