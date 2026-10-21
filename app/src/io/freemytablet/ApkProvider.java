@@ -19,12 +19,20 @@ public class ApkProvider extends ContentProvider {
     static final String AUTHORITY = "io.freemytablet.apk";
     static final Uri URI = new Uri.Builder().scheme("content").authority(AUTHORITY).path("/apk").build();
 
-    /** The file that is being served (the APK that was downloaded). */
-    private static File file;
+    /**
+     * The file that is being served (the APK that was downloaded).
+     *
+     * It is kept in the settings, not in a variable: the provider runs in the app's main process and the screen
+     * in the ":home" one, and a variable of one is not seen by the other.
+     */
+    private static File file() {
+        String path = Prefs.apkPath();
+        return path.isEmpty() ? null : new File(path);
+    }
 
     /** The APK that was downloaded, ready to be installed. */
     public static void setFile(File apk) {
-        file = apk;
+        Prefs.setApkPath(apk == null ? "" : apk.getAbsolutePath());
     }
 
     @Override public boolean onCreate() {
@@ -32,6 +40,7 @@ public class ApkProvider extends ContentProvider {
     }
 
     @Override public Cursor query(Uri uri, String[] projection, String selection, String[] args, String sort) {
+        File file = file();
         if (file == null) return null;
         MatrixCursor cursor = new MatrixCursor(new String[] {OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE});
         cursor.addRow(new Object[] {file.getName(), file.length()});
@@ -40,7 +49,8 @@ public class ApkProvider extends ContentProvider {
 
     @Override public ParcelFileDescriptor openFile(Uri uri, String mode) throws FileNotFoundException {
         // The installer asks for the file with a few different modes ("r", "rt"...): all of them are read.
-        if (file == null) throw new FileNotFoundException("no APK to read");
+        File file = file();
+        if (file == null || !file.exists()) throw new FileNotFoundException("no APK to read");
         if (mode != null && !mode.contains("r")) throw new FileNotFoundException("read only");
         AppLog.w("the installer is reading the APK (" + file.length() + " bytes)");
         return ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY);

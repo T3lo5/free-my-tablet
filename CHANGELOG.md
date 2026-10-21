@@ -2,6 +2,12 @@
 
 Everything that changed, newest first.
 
+## v1.5
+
+- **The installer finds the APK.** The provider of the app runs in the main process and the screen in the ":home"
+  one: the path of the downloaded file was in a variable of one process and the other could not see it. It is in
+  the settings now.
+
 ## v1.4
 
 - **The update opens the installer directly.** It went through the system's "open with" chooser, and the chooser

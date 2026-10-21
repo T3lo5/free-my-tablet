@@ -144,6 +144,12 @@ final class Prefs {
     static long updateCheck() { return sp().getLong("updateCheck", 0); }
     static void setUpdateCheck(long when) { put("updateCheck", when); }
 
+    // MARK: - The downloaded APK (the provider of the app reads it, from another process)
+
+    /** Where the downloaded APK is (the installer reads it from there). */
+    static String apkPath() { return sp().getString("apkPath", ""); }
+    static void setApkPath(String path) { put("apkPath", path); }
+
     // MARK: - The widget on the home screen
 
     /** The id of the widget in the slot (0 when there is none). */
