@@ -199,11 +199,12 @@ public class HomeView extends View implements Choreographer.FrameCallback {
         label.setTextSize(labelSize);
         date.setTextSize(dp(14));
         hint.setTextSize(dp(15));
-        buildBackground();
+        buildBackground();   // the view has its size now
     }
 
     /** The background: the sky of the day (two tones) with a soft light on top. */
     private void buildBackground() {
+        if (w <= 0 || h <= 0) return;   // the view has no size yet (right after the app starts)
         String theme = Prefs.theme();
         if ("light".equals(theme)) {
             Sky.light(palette);
@@ -215,7 +216,8 @@ public class HomeView extends View implements Choreographer.FrameCallback {
         bg.setShader(new android.graphics.LinearGradient(0, 0, 0, h, palette.color(1), palette.color(0),
                 Shader.TileMode.CLAMP));
         int light = palette.color(2);
-        glow.setShader(new android.graphics.RadialGradient(w * 0.5f, h * 0.26f, Math.max(w, h) * 0.85f,
+        float radius = Math.max(1f, Math.max(w, h) * 0.85f);
+        glow.setShader(new android.graphics.RadialGradient(w * 0.5f, h * 0.26f, radius,
                 new int[] {Ui.alpha(light, 0.26f), Ui.alpha(light, 0.06f), Ui.alpha(light, 0f)},
                 new float[] {0f, 0.55f, 1f}, Shader.TileMode.CLAMP));
     }
