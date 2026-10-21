@@ -208,6 +208,41 @@ final class HomeMode {
         ModeJob.schedule(c, ModeJob.VERIFY, null, 0);
     }
 
+    /**
+     * Whether our home screen is the one the system shows now (the system's own answer, no ADB needed).
+     * This is the truth the settings screen shows: the state file can be out of date.
+     */
+    static boolean homeNow(Context c) {
+        try {
+            Intent intent = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME);
+            android.content.pm.ResolveInfo info = c.getPackageManager().resolveActivity(intent, 0);
+            if (info == null || info.activityInfo == null) return false;
+            return PKG.equals(info.activityInfo.packageName);
+        } catch (RuntimeException e) {
+            return false;
+        }
+    }
+
+    /**
+     * Checks the home screen against the state and fixes it (the state can be out of date when a switch failed
+     * halfway). It runs in a thread: the settings screen asks for it when it opens, because the system does not
+     * always run the background job (the manufacturer stops it).
+     */
+    static void checkNow(Context c) {
+        final Context app = c.getApplicationContext();
+        new Thread(() -> {
+            boolean ours = homeNow(app);
+            JSONObject s = state(app);
+            String mode = ours ? FREE : ORIGINAL;
+            if (!mode.equals(s.optString("mode"))) {
+                put(s, "mode", mode);
+                put(s, "roleHeld", ours);
+                save(app, s);
+                AppLog.w("the state was wrong: the home screen is " + (ours ? "ours" : "the tablet's own"));
+            }
+        }, "check").start();
+    }
+
     // MARK: - Switches (main process, from ModeJob)
 
     static void applyNow(Context c, String mode) {
@@ -425,11 +460,20 @@ final class HomeMode {
                 s.put("fingerprint", fingerprint);
                 save(app, s);
             } catch (JSONException ignored) {}
-            if (!FREE.equals(s.optString("mode"))) return;
             List<String> fixed = new ArrayList<>();
             try (Adb adb = Adb.connect(app, 45_000, () -> notice(app, Ui.tr(
                     "Aceite o aviso \"Permitir depuração\" no tablet (marque \"Sempre permitir\").",
                     "Accept \"Allow USB debugging?\" on the tablet (tick \"Always allow\").")))) {
+                // The state can be out of date (a switch that failed halfway): the home screen says the truth.
+                String real = currentHome(adb);
+                boolean ours = real != null && real.startsWith(PKG + "/");
+                String mode = ours ? FREE : ORIGINAL;
+                if (!mode.equals(s.optString("mode"))) {
+                    put(s, "mode", mode);
+                    put(s, "roleHeld", ours);
+                    save(app, s);
+                }
+                if (!FREE.equals(mode)) return;   // the tablet is on its own home screen: nothing to do
                 Set<String> present = packages(adb, "");
                 Set<String> disabledNow = packages(adb, "-d");
                 Set<String> owners = wifiOwners(adb);
@@ -492,6 +536,39 @@ final class HomeMode {
             if (Arrays.asList(OPTIONAL).contains(pkg)) out.add(pkg);
         }
         return out;
+    }
+
+    /**
+     * Applies right away the optional apps the person just chose: the ones they marked are turned off, the others
+     * are turned back on. It runs in a thread and needs the tablet's ADB (the port has to be open).
+     */
+    static void applyOptional(Context c) {
+        final Context app = c.getApplicationContext();
+        new Thread(() -> {
+            try (Adb adb = Adb.connect(app, 20_000, null)) {
+                Set<String> off = new HashSet<>(optionalOff());
+                Set<String> present = packages(adb, "");
+                Set<String> disabled = packages(adb, "-d");
+                int turned = 0;
+                for (String pkg : OPTIONAL) {
+                    if (!present.contains(pkg)) continue;
+                    boolean shouldBeOff = off.contains(pkg);
+                    boolean isOff = disabled.contains(pkg);
+                    if (shouldBeOff == isOff) continue;
+                    String out = adb.shell((shouldBeOff ? "pm disable-user --user 0 " : "pm enable ") + pkg);
+                    if (out.contains("disabled-user") || out.contains("new state: enabled")) turned++;
+                    else AppLog.w("could not change " + pkg + ": " + out.trim());
+                }
+                notice(app, turned == 0
+                        ? Ui.tr("Os apps que você marcou estão assim.", "The apps you marked are like that.")
+                        : Ui.tr(turned + " apps desligados (ou religados).", turned + " apps turned off (or back on)."));
+            } catch (Exception e) {
+                notice(app, Ui.tr("Não consegui mudar os apps: o ADB do tablet não está aberto "
+                                + "(\"adb tcpip 5555\" pelo computador).",
+                        "I couldn't change the apps: the tablet's ADB is not open "
+                                + "(run \"adb tcpip 5555\" from your computer)."));
+            }
+        }, "optional").start();
     }
 
     /** The home screen in use now ("package/activity"): the HOME role holder, among the tablet's home screens. */

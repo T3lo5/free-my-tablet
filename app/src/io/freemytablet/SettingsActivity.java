@@ -4,6 +4,8 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -111,6 +113,7 @@ public class SettingsActivity extends Activity {
 
         /** What the screen shows: the main list, the apps to turn off, or the dock. */
         private int screen = MAIN, pickFor;
+        private JSONObject state = new JSONObject();   // the switch state (read once, not every frame)
         private float scroll;
         private List<String> rows = new ArrayList<>();     // the labels of the main screen
         private List<HomeApps.Item> apps = new ArrayList<>();  // the checklist
@@ -133,6 +136,8 @@ public class SettingsActivity extends Activity {
 
         void resume() {
             rows = mainRows();
+            state = HomeMode.state(activity);
+            HomeMode.checkNow(activity);   // the state can be out of date: the home screen says the truth
             running = true;
             lastFrame = 0;
             Choreographer.getInstance().postFrameCallback(this);
@@ -163,7 +168,7 @@ public class SettingsActivity extends Activity {
         private final Runnable poll = new Runnable() {
             @Override public void run() {
                 if (!running) return;
-                JSONObject state = HomeMode.state(activity);
+                state = HomeMode.state(activity);
                 String busy = state.optString("busy", "");
                 String error = state.optString("error", "");
                 statusText = !busy.isEmpty() ? busy : error;
@@ -189,10 +194,9 @@ public class SettingsActivity extends Activity {
 
         /** The text on the right of a row: what it is now. */
         private String value(int row) {
-            JSONObject state = HomeMode.state(activity);
             String mode = state.optString("mode", HomeMode.ORIGINAL);
             switch (row) {
-                case 0: return HomeMode.FREE.equals(mode)
+                case 0: return HomeMode.homeNow(activity)
                         ? Ui.tr("Free My Tablet", "Free My Tablet")
                         : Ui.tr("Original", "Original");
                 case 1: return Ui.tr("Escolher", "Choose");
@@ -302,13 +306,16 @@ public class SettingsActivity extends Activity {
         @Override public boolean onTouchEvent(MotionEvent e) {
             switch (e.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
-                    downY = e.getY();
+                    downY = lastY = e.getY();
                     return true;
-                case MotionEvent.ACTION_MOVE:
-                    scroll -= e.getY() - lastY;
+                case MotionEvent.ACTION_MOVE: {
+                    float moved = e.getY() - lastY;
                     lastY = e.getY();
+                    if (Math.abs(moved) < 0.5f) return true;   // the finger did not move: it is a tap
+                    scroll = Math.max(0, Math.min(maxScroll(), scroll - moved));
                     invalidate();
                     return true;
+                }
                 case MotionEvent.ACTION_UP: {
                     if (Math.abs(e.getY() - downY) > dp(12)) return true;   // it was a scroll
                     if (screen == MAIN) tapMain(e.getY());
@@ -318,6 +325,12 @@ public class SettingsActivity extends Activity {
                 default:
                     return super.onTouchEvent(e);
             }
+        }
+
+        /** How far the list can go: nothing to scroll when everything fits. */
+        private float maxScroll() {
+            int items = screen == MAIN ? rows.size() : apps.size();
+            return Math.max(0, items * rowH - (bottom - top));
         }
 
         private float downY, lastY;
@@ -386,17 +399,25 @@ public class SettingsActivity extends Activity {
         private void openChecklist(int which) {
             screen = which;
             scroll = 0;
-            apps = HomeApps.all(activity);
             picked = new ArrayList<>();
             if (which == OFF_APPS) {
-                // Only the apps that are in the optional list can be turned off.
-                List<HomeApps.Item> only = new ArrayList<>();
-                for (HomeApps.Item item : apps) if (isOptional(item.pkg)) only.add(item);
-                apps = only;
+                // Every optional app that is on the tablet (even the ones with no icon: they are services).
+                apps = new ArrayList<>();
+                PackageManager pm = activity.getPackageManager();
+                for (String pkg : HomeMode.OPTIONAL) {
+                    try {
+                        ApplicationInfo info = pm.getApplicationInfo(pkg, 0);
+                        String label = String.valueOf(pm.getApplicationLabel(info));
+                        apps.add(new HomeApps.Item(pkg, label.isEmpty() ? pkg : label));
+                    } catch (PackageManager.NameNotFoundException ignored) {
+                    }
+                }
                 for (String pkg : Prefs.optionalOff()) if (isOptional(pkg)) picked.add(pkg);
             } else {
+                apps = HomeApps.all(activity);
                 List<String> chosen = Prefs.favorites();
-                if (chosen != null) picked.addAll(chosen);
+                if (chosen == null) chosen = HomeApps.defaultFavorites();
+                picked.addAll(chosen);
             }
             invalidate();
         }
@@ -408,8 +429,7 @@ public class SettingsActivity extends Activity {
 
         /** What the switch does, before it does it. */
         private void askSwitch() {
-            JSONObject state = HomeMode.state(activity);
-            boolean free = HomeMode.FREE.equals(state.optString("mode", HomeMode.ORIGINAL));
+            boolean free = HomeMode.homeNow(activity);
             if (free) {
                 // Back to the tablet's own home screen: with the ADB open it is automatic, without it the system's
                 // own dialog asks the user to pick the tablet's launcher. The check opens a socket: it has to run
@@ -510,10 +530,11 @@ public class SettingsActivity extends Activity {
             invalidate();
         }
 
-        /** The checklist changed: keep it. */
+        /** The checklist changed: keep it (and turn the apps off right away, when the ADB is open). */
         private void saveChecklist() {
             if (screen == OFF_APPS) {
                 Prefs.setOptionalOff(picked);
+                HomeMode.applyOptional(activity);
             } else {
                 Prefs.setFavorites(picked);
             }

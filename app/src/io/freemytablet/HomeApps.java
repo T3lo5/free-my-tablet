@@ -96,10 +96,15 @@ final class HomeApps {
         return out;
     }
 
+    /** The favorites before the person picks their own. */
+    static List<String> defaultFavorites() {
+        return Arrays.asList(DEFAULT_FAVORITES);
+    }
+
     /** The favorites: the person's choice, or the built-in list (only the apps that are there). */
     static List<Item> favorites(Context c, List<Item> all) {
         List<String> wanted = Prefs.favorites();
-        if (wanted == null) wanted = Arrays.asList(DEFAULT_FAVORITES);
+        if (wanted == null) wanted = defaultFavorites();
         Map<String, Item> byPkg = new HashMap<>();
         for (Item item : all) byPkg.put(item.pkg, item);
         List<Item> out = new ArrayList<>();
