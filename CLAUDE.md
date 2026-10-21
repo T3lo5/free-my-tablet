@@ -62,6 +62,26 @@ tablet before you do it, and let them do the taps on the tablet.
    is never turned off (it is on the protected list), so the network survives the switch.
 8. **Check:** `adb logcat -s FreeMyTablet` shows what the switch did.
 
+## Cutting a release
+
+1. Write what changed in `CHANGELOG.md`, under the version's title (`## v1.1`).
+2. Commit and push.
+3. Tag and push the tag: **the tag is the release** (the workflow builds, signs and publishes it).
+   ```bash
+   git tag -a v1.1 -m "Free My Tablet v1.1" && git push origin v1.1
+   ```
+   The APK lands in the release with the notes of that version and the link to the commits.
+
+The signing key is a secret of the repository (`KEYSTORE_BASE64`): the workflow decodes it and signs with it.
+The keystore is the same one the tablet has installed, so the release is an update and not a new app. **Losing
+that keystore means the people who installed the app cannot update it** — back it up (it is in the project's own
+folder, `freemytablet.keystore`, and it is not in the repository).
+
+The build on the runner uses the Android SDK that GitHub's image already has (the workflow only asks for
+`platforms;android-30` and `build-tools;34.0.0`, and goes on if they are not available). The
+`android-actions/setup-android` action does not work any more (it looks for the "tools" package, which the SDK
+repository does not have).
+
 ## Adapting it to another tablet
 
 Read first, change after. Read-only commands that tell you what the tablet has:

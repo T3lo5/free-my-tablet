@@ -52,6 +52,13 @@ nothing is ever uninstalled.
 
 About ten minutes. You need an Android tablet (Android 9 or newer) and a computer on the same Wi-Fi.
 
+### The easy way: download the APK
+
+1. Get the APK from the [releases](https://github.com/T3lo5/free-my-tablet/releases) (the file `FreeMyTablet.apk`).
+2. Copy it to the tablet and open it (the tablet asks to allow the installation from that app).
+3. Open **Free My Tablet** → *Home screen* → *Free My Tablet*, and accept the debugging prompt
+   (tick *Always allow*).
+
 ### The easy way: Claude Code
 
 1. **On the tablet**, turn on developer mode: Settings → About tablet → tap *Build number* 7 times. Then Settings →
@@ -166,6 +173,15 @@ nothing else. Your settings stay on your tablet.
 - Icons: [Material Symbols](https://fonts.google.com/icons) (Apache 2.0). Font: [Inter](https://rsms.me/inter/)
   (SIL OFL 1.1).
 - Not affiliated with Samsung, Google or any app. App names and logos belong to their owners.
+
+## Building it
+
+```bash
+./build.sh
+```
+
+A JDK 17 and the Android SDK (build-tools 34+, platform android-30) are all it takes. No Gradle, no libraries.
+Every push is built by GitHub to make sure it compiles, and every tag publishes a release with the APK.
 
 ## License
 
