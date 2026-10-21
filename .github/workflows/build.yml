@@ -26,6 +26,9 @@ jobs:
           ls "$ANDROID_HOME/platforms" || true
 
       - name: Build
+        env:
+          # The version of the last release (so a build of the main branch is not older than the release).
+          FREE_MY_TABLET_VERSION: ${{ github.ref_name }}
         run: ./build.sh
 
       - name: The APK

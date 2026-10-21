@@ -34,6 +34,8 @@ jobs:
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > freemytablet.keystore
 
       - name: Build
+        env:
+          FREE_MY_TABLET_VERSION: ${{ github.ref_name }}
         run: ./build.sh
 
       - name: The notes of this version

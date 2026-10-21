@@ -134,6 +134,12 @@ public class SettingsActivity extends Activity {
 
         static final int MAIN = 0, FAVORITES = 1, OFF_APPS = 2, SPACE = 3, TALKERS = 4, UPDATES = 5;
 
+        /** The lines of the main screen, in the order they are shown. */
+        static final int HOME = 0, ON_SCREEN = 1, VAULT = 2, WEATHER = 3, WIDGET = 4, SYNC = 5, SPACE_ROW = 6,
+                TALKERS_ROW = 7, UPDATES_ROW = 8, OFF = 9, LANGUAGE = 10, THEME = 11, ABOUT = 12;
+        static final int[] ROWS = {HOME, ON_SCREEN, VAULT, WEATHER, WIDGET, SYNC, SPACE_ROW, TALKERS_ROW,
+                UPDATES_ROW, OFF, LANGUAGE, THEME, ABOUT};
+
         SettingsView(Activity a) {
             super(a);
             this.activity = a;
@@ -190,44 +196,50 @@ public class SettingsActivity extends Activity {
 
         private List<String> mainRows() {
             List<String> out = new ArrayList<>();
-            out.add(Ui.tr("Tela de Início", "Home screen"));
-            out.add(Ui.tr("Apps na tela", "Apps on the home screen"));
-            out.add(Ui.tr("Pasta do Obsidian", "Obsidian folder"));
-            out.add(Ui.tr("Card do tempo", "Weather card"));
-            out.add(Ui.tr("Widget", "Widget"));
-            out.add(Ui.tr("Sincronizar", "Sync"));
-            out.add(Ui.tr("Espaço", "Space"));
-            out.add(Ui.tr("Quem fala com você", "Who talks to you"));
-            out.add(Ui.tr("Atualizações", "Updates"));
-            out.add(Ui.tr("Apps para desligar", "Apps to turn off"));
-            out.add(Ui.tr("Idioma", "Language"));
-            out.add(Ui.tr("Tema", "Theme"));
-            out.add(Ui.tr("Sobre", "About"));
+            for (int row : ROWS) out.add(title(row));
             return out;
+        }
+
+        /** The title of a line. */
+        private String title(int row) {
+            switch (row) {
+                case HOME: return Ui.tr("Tela de Início", "Home screen");
+                case ON_SCREEN: return Ui.tr("Apps na tela", "Apps on the home screen");
+                case VAULT: return Ui.tr("Pasta do Obsidian", "Obsidian folder");
+                case WEATHER: return Ui.tr("Card do tempo", "Weather card");
+                case WIDGET: return Ui.tr("Widget", "Widget");
+                case SYNC: return Ui.tr("Sincronizar", "Sync");
+                case SPACE_ROW: return Ui.tr("Espaço", "Space");
+                case TALKERS_ROW: return Ui.tr("Quem fala com você", "Who talks to you");
+                case UPDATES_ROW: return Ui.tr("Atualizações", "Updates");
+                case OFF: return Ui.tr("Apps para desligar", "Apps to turn off");
+                case LANGUAGE: return Ui.tr("Idioma", "Language");
+                case THEME: return Ui.tr("Tema", "Theme");
+                default: return Ui.tr("Sobre", "About");
+            }
         }
 
         /** The text on the right of a row: what it is now. */
         private String value(int row) {
-            String mode = state.optString("mode", HomeMode.ORIGINAL);
             switch (row) {
-                case 0: return HomeMode.homeNow(activity)
+                case HOME: return HomeMode.homeNow(activity)
                         ? Ui.tr("Free My Tablet", "Free My Tablet")
                         : Ui.tr("Original", "Original");
-                case 1: return Ui.tr("Escolher", "Choose");
-                case 2: return Vault.ready(activity) ? Ui.tr("Escolhida", "Chosen") : Ui.tr("Escolher", "Choose");
-                case 3: return Prefs.weatherCard() ? Ui.tr("Ligado", "On") : Ui.tr("Desligado", "Off");
-                case 4: return Prefs.widgetId() == 0 ? Ui.tr("Escolher", "Choose") : Ui.tr("Colocado", "Placed");
-                case 5: return Ui.tr("Ajustar", "Set up");
-                case 6: return Ui.tr("O que ocupa o tablet", "What is using the tablet");
-                case 7: return Ui.tr("Notificações", "Notifications");
-                case 8: return Ui.tr("Apps que você não usa", "Apps you don't use");
-                case 9: return updateState;
-                case 10: {
+                case ON_SCREEN: return Ui.tr("Escolher", "Choose");
+                case VAULT: return Vault.ready(activity) ? Ui.tr("Escolhida", "Chosen") : Ui.tr("Escolher", "Choose");
+                case WEATHER: return Prefs.weatherCard() ? Ui.tr("Ligado", "On") : Ui.tr("Desligado", "Off");
+                case WIDGET: return Prefs.widgetId() == 0 ? Ui.tr("Escolher", "Choose") : Ui.tr("Colocado", "Placed");
+                case SYNC: return Ui.tr("Ajustar", "Set up");
+                case SPACE_ROW: return Ui.tr("O que ocupa o tablet", "What is using the tablet");
+                case TALKERS_ROW: return Ui.tr("Notificações", "Notifications");
+                case UPDATES_ROW: return updateState;
+                case OFF: return Ui.tr("Apps que você não usa", "Apps you don't use");
+                case LANGUAGE: {
                     String l = Prefs.language();
                     return "auto".equals(l) ? Ui.tr("Automático", "Automatic")
                             : "pt".equals(l) ? "Português" : "es".equals(l) ? "Español" : "English";
                 }
-                case 11: {
+                case THEME: {
                     String t = Prefs.theme();
                     return "light".equals(t) ? Ui.tr("Claro", "Light") : "dark".equals(t) ? Ui.tr("Escuro", "Dark")
                             : Ui.tr("Automático", "Automatic");
@@ -284,7 +296,7 @@ public class SettingsActivity extends Activity {
                 rowTitle.setColor(0xFFFFFFFF);
                 c.drawText(rows.get(i), dp(20), y + dp(30), rowTitle);
                 rowValue.setColor(0x99FFFFFF);
-                String v = value(i);
+                String v = value(ROWS[i]);
                 float vw = rowValue.measureText(v);
                 c.drawText(v, w - dp(20) - vw, y + dp(30), rowValue);
             }
@@ -406,22 +418,22 @@ public class SettingsActivity extends Activity {
         private void tapMain(float y) {
             int index = (int) ((y + scroll - top + rowH / 2) / rowH);
             if (index < 0 || index >= rows.size()) return;
-            switch (index) {
-                case 0: askSwitch(); break;
-                case 1: openChecklist(FAVORITES); break;
-                case 2: Vault.pick(activity); break;
-                case 3:
+            switch (ROWS[index]) {
+                case HOME: askSwitch(); break;
+                case ON_SCREEN: openChecklist(FAVORITES); break;
+                case VAULT: Vault.pick(activity); break;
+                case WEATHER:
                     Prefs.setWeatherCard(!Prefs.weatherCard());
                     reload();
                     break;
-                case 4: askWidget(); break;
-                case 5: askSync(); break;
-                case 6: openSpace(); break;
-                case 7: openTalkers(); break;
-                case 8: openChecklist(OFF_APPS); break;
-                case 9: openUpdates(); break;
-                case 10: askLanguage(); break;
-                case 11: askTheme(); break;
+                case WIDGET: askWidget(); break;
+                case SYNC: askSync(); break;
+                case SPACE_ROW: openSpace(); break;
+                case TALKERS_ROW: openTalkers(); break;
+                case UPDATES_ROW: openUpdates(); break;
+                case OFF: openChecklist(OFF_APPS); break;
+                case LANGUAGE: askLanguage(); break;
+                case THEME: askTheme(); break;
                 default: askAbout(); break;
             }
         }

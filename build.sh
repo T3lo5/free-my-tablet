@@ -63,11 +63,23 @@ final class Config {
 }
 EOF
 
+# --- Version: from the tag (or from the environment, when the build is not in a git checkout)
+VERSION="${FREE_MY_TABLET_VERSION:-}"
+if [ -z "$VERSION" ]; then
+  # The tag of the build (the version). The container may not own the checkout: git is told to trust it.
+  VERSION="$( { git -c safe.directory='*' describe --tags --abbrev=0 2>/dev/null || true; } | sed 's/^v//')"
+fi
+[ -n "$VERSION" ] || VERSION="1.0"
+# The version code has to grow: 1.1 -> 101, 1.10 -> 110, 2.0 -> 200
+CODE="$(printf '%s' "$VERSION" | awk -F'[.-]' '{printf "%d%02d", ($1=="")?0:$1, ($2=="")?0:$2}')"
+echo "Building version $VERSION (code $CODE)"
+
 # --- Build
 "$BT/aapt2" compile --dir app/res -o out/res.zip
 # Fonts uncompressed: Android reads them straight from the APK.
 "$BT/aapt2" link -o out/base.apk -I "$AJ" --manifest app/AndroidManifest.xml --java out/gen out/res.zip \
-  --min-sdk-version 28 --target-sdk-version 30 -A app/assets -0 ttf
+  --min-sdk-version 28 --target-sdk-version 30 --version-name "$VERSION" --version-code "$CODE" \
+  -A app/assets -0 ttf
 "$JAVAC" -nowarn -Xlint:-options -source 8 -target 8 -bootclasspath "$AJ:$BT/core-lambda-stubs.jar" -classpath "$AJ" \
   -d out/classes $(find app/src out/gen -name '*.java')
 "$BT/d8" --release --min-api 28 --lib "$AJ" --output out $(find out/classes -name '*.class')

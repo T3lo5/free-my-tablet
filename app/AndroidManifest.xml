@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="io.freemytablet"
-    android:versionCode="1"
-    android:versionName="1.0">
+    package="io.freemytablet">
+    <!-- The version comes from the build (the tag): the manifest must not have one, or aapt2 keeps it. -->
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
