@@ -23,16 +23,19 @@ This is the sibling of [Free My TV](https://freemytv.io): the same ideas and the
 
 ## What you get
 
-- **Only your things.** Not a grid of every app: the clock, the apps you picked (Obsidian, YouTube, Termux,
-  your reader, the webapps you installed), and a small button for the rest.
+- **Only your things.** Not a grid of every app: the clock, the weather, the apps you picked (Obsidian, YouTube,
+  Termux, your reader, the webapps you installed), and a small button for the rest.
 - **A quick note.** Write on the home screen without opening anything: the note goes straight into your
   Obsidian vault, as a Markdown file, one per day.
+- **A sync button.** The git pull and the copy over your vault, in one tap: no Termux, no copying folders by
+  hand. (Termux does the work — that is where git is.)
 - **Nothing extra.** No ads, no sponsored rows, no promo widgets, no analytics, no account.
-- **Light by day, dark by night.** The screen follows the real sunrise and sunset where you are.
+- **Light by day, dark by night.** The screen follows the real sunrise and sunset where you are (or you can
+  choose the light or the dark one).
 - **The bloat turned off.** The apps the manufacturer preinstalled (Microsoft Office, Facebook, the Galaxy Store,
   Bixby…) can be switched off in one tap. They are never uninstalled: *Original* brings them all back.
 - **Safe.** No root. Nothing is uninstalled. One button brings back the factory home screen.
-- **Light on an old tablet.** Drawn by hand on one Canvas, no libraries, a 1 MB APK.
+- **Light on an old tablet.** Drawn by hand on one Canvas, no libraries, a 1.1 MB APK.
 
 ## Install
 
@@ -81,9 +84,24 @@ About ten minutes. You need an Android tablet (Android 9 or newer) and a compute
 | *Home screen* | Free My Tablet ⇄ Original (the factory home screen) |
 | *Apps on the home screen* | The apps in the row (the ones you use) |
 | *Obsidian folder* | Where the quick note is saved (the system's folder picker) |
+| *Weather card* | The temperature on the home screen, on or off |
+| *Sync* | The git folder in Termux and the command that pulls |
 | *Apps to turn off* | The preinstalled apps you never use (Bixby, Samsung Internet, the Play apps…) |
 | *Language* | Automatic, Português, English, Español |
 | *Theme* | Automatic (follows the sun), Light, Dark |
+
+### The sync
+
+The button at the bottom left does what you do by hand today: `git pull` in the working folder, then the copy
+over the folder Obsidian reads (the `.git` and the `.obsidian` stay). It needs two things, once:
+
+- the permission to run commands on Termux (the app asks the system, when you press the button the first time);
+- in Termux, one line:
+  ```bash
+  echo "allow-external-apps = true" >> ~/.config/termux/termux.properties
+  ```
+
+The working folder and the pull command are in *Settings → Sync* (`~/pos-coders` and `git pull` by default).
 
 ## Going back
 

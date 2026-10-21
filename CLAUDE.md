@@ -96,7 +96,20 @@ Then, in the code:
   a tablet with a keyboard).
 - **The quick note** is a real `EditText` (`HomeActivity`), put exactly on the panel the home screen draws, and it
   is saved in the Obsidian vault (`Vault`): the system's own folder picker (SAF), one Markdown file per day,
-  appended. Without AndroidX: `DocumentsContract` and the `ContentResolver` directly.
+  appended. Without AndroidX: `DocumentsContract` and the `ContentResolver` directly. Two traps: the tree URI is
+  the folder and the *document* URI is the folder as a document (`createDocument` wants the second one), and the
+  file is opened with `"rwt"` (`"wt"` does not exist).
+- **The sync button** (bottom left) does the git pull and the copy without going to Termux: the app writes a small
+  script in the vault (the only place both can reach), asks Termux to run it, and reads the log it leaves. Termux
+  needs two things, once: the `com.termux.permission.RUN_COMMAND` permission (the app asks the system) and
+  `allow-external-apps=true` in `~/.config/termux/termux.properties` (the person types it in Termux). The
+  arguments of the Termux service go as a **String array** (one argument each) and the service is started with
+  `startForegroundService` (Android 11 blocks a plain service start from the background). The script and its log
+  are excluded from the copy (the copy empties the vault: the log is being written while it runs).
+- **The theme** (automatic, light, dark) really changes the background: `Sky.light`/`Sky.dark` instead of the sky
+  of the hour.
+- **The weather card** (top right): the temperature, the symbol and the city, from Open-Meteo (`Weather`), with a
+  switch in the settings.
 - **The home screen switch does not need the ADB.** From Android 10 on, the home app is a role the system gives
   (`RoleManager.createRequestRoleIntent`): the system's own dialog, no root, no keys. **The manifest has to declare
   the HOME intent in `<queries>`** — without it the system cannot see the other home apps and the role is never

@@ -49,9 +49,9 @@ final class Termux {
         intent.setComponent(new ComponentName(PACKAGE, SERVICE));
         intent.setAction("com.termux.RUN_COMMAND");
         intent.putExtra("com.termux.RUN_COMMAND_PATH", "/data/data/com.termux/files/usr/bin/bash");
-        // The script goes straight to bash (the file written through the folder picker has no execute bit,
-        // so it cannot be run as a program). The path has no spaces: it goes as it is, without quotes.
-        intent.putExtra("com.termux.RUN_COMMAND_ARGUMENTS", scriptPath);
+        // The arguments go as an array (one argument each: the script path), and the script goes straight to
+        // bash (the file written through the folder picker has no execute bit, so it cannot be run as a program).
+        intent.putExtra("com.termux.RUN_COMMAND_ARGUMENTS", new String[] {scriptPath});
         intent.putExtra("com.termux.RUN_COMMAND_BACKGROUND", true);
         try {
             c.startForegroundService(intent);

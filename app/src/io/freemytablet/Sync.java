@@ -30,7 +30,9 @@ final class Sync {
                 + "  echo \"--- Free My Tablet: sincronizando $(date) ---\"\n"
                 + "  cd \"" + w + "\" || { echo \"FREEMY-SYNC-ERROR: a pasta " + work + " nao existe\"; exit 1; }\n"
                 + "  (" + pull + ") || { echo \"FREEMY-SYNC-ERROR: o pull falhou\"; exit 1; }\n"
-                + "  find \"" + dest + "\" -mindepth 1 -maxdepth 1 ! -name '.git' ! -name '.obsidian' -exec rm -rf {} +\n"
+                // The script and the log stay: the log is being written while this runs.
+                + "  find \"" + dest + "\" -mindepth 1 -maxdepth 1 ! -name '.git' ! -name '.obsidian'"
+                + " ! -name '.freemy-sync*' -exec rm -rf {} +\n"
                 + "  tar cf - --exclude=.git --exclude=.obsidian . | (cd \"" + dest + "\" && tar xf -)\n"
                 + "  echo \"FREEMY-SYNC-OK\"\n"
                 + "} > \"$LOG\" 2>&1\n";
