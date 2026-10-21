@@ -5,12 +5,20 @@ Free My Tablet and the tablet's original home screen. A plain Android app in Jav
 `build.sh`. It is the sibling of **Free My TV** (`../free-my-tv`): the same ideas, the same code style, the same
 safety net — but for a tablet, with the touch instead of the remote.
 
-The first tablet is a **Galaxy Tab A 8.0 (2019), SM-T290** (Brazil): Android 9, 8" 1280×800, 2 GB of RAM,
-Exynos 7904. That is the machine everything is built for: an old, slow tablet that has to feel light.
+The first tablet is a **Galaxy Tab A 8.0 (2019), SM-T290** (Brazil): Android 11, 8" 1280×800 at 213 dpi, 2 GB of
+RAM, Exynos 7904. Everything is built for that: an old, slow tablet that has to feel light.
 The website is not in this repo yet.
 
 The person you're helping may not be technical. Keep it short and friendly, say what you're about to do on their
 tablet before you do it, and let them do the taps on the tablet.
+
+## What is on the tablet (read with adb, don't guess)
+
+- Android 11 (API 30), security patch 2023-05-01. No AGSL, no GPU shaders: the sky is drawn with plain fills.
+- Screen 800×1280, density 213 (so 601×961 dp). The stock home: `com.sec.android.app.launcher`.
+- The apps: Obsidian, ReadEra, Termux, YouTube, two web apps installed as WebAPKs (Astron Members, CODERS),
+  Chrome, Drive, Gmail, Bitwarden, YouCine, Samsung Notes, My Files.
+- No Bixby, no Samsung Internet, no Microsoft Office, no Facebook: this tablet is already clean.
 
 ## Installing it on a tablet
 
@@ -26,11 +34,20 @@ tablet before you do it, and let them do the taps on the tablet.
 3. **Settings:** run `./build.sh` once; it creates `config.properties`. Fill in `latitude` and `longitude` (decimal
    degrees) and `city` for their city. Nothing else is needed: there are no keys.
 4. **Build:** `./build.sh` → `FreeMyTablet.apk`. Keep `freemytablet.keystore`: updates must be signed with the same key.
-5. **Install:** `adb connect <IP>:5555` (or `adb devices` over USB) and `adb install -r FreeMyTablet.apk`.
-6. **They switch on the tablet:** *Free My Tablet* → *Home screen* → *Free My Tablet*. From Android 10 on, the
-   system asks which home app to use: pick Free My Tablet. The app uses the tablet's own ADB on 127.0.0.1 to turn
-   the preinstalled apps off, so the tablet asks once more to allow debugging (`adb tcpip 5555` from the computer
-   opens the port). Don't switch modes from the computer.
+5. **Install:** `adb install -r FreeMyTablet.apk` (over USB) or `adb connect <IP>:5555` and then the same.
+6. **Open the ADB port of the tablet** (from the computer, with the tablet plugged in):
+   ```bash
+   adb tcpip 5555
+   ```
+   This is what lets the app turn the preinstalled apps off **from inside the tablet**. The port closes when the
+   tablet reboots: run it again then. It is not needed to change the home screen (see below).
+7. **They switch on the tablet:** *Free My Tablet* → *Home screen* → *Free My Tablet*. The system asks which home
+   app to use (Android's own dialog, the HOME role): pick Free My Tablet. Then the tablet asks to allow debugging
+   (the app's own ADB): accept it and tick **"Sempre permitir"** — otherwise the next switch asks again.
+   Don't switch modes from the computer.
+
+   **If the debugging prompt does not appear**, the tablet's `adbd` is holding an old prompt that never got an
+   answer: run `adb tcpip 5555` again from the computer (it restarts `adbd` and clears it).
 
    **If the switch stops and asks them to forget the Wi-Fi**, it is the app protecting the network, not a bug. When
    Android turns off an app, it also deletes the Wi-Fi networks that app saved. The switch turns off the setup wizard,
@@ -41,7 +58,7 @@ tablet before you do it, and let them do the taps on the tablet.
    The fix is to make the network belong to someone else. On the tablet: *Settings* → *Connections* → *Wi-Fi* → the
    network → *Forget*, then connect to it again with the password. Now the Settings app owns it, and the Settings app
    is never turned off (it is on the protected list), so the network survives the switch.
-7. **Check:** `adb logcat -s FreeMyTablet` shows what the switch did.
+8. **Check:** `adb logcat -s FreeMyTablet` shows what the switch did.
 
 ## Adapting it to another tablet
 
@@ -81,9 +98,15 @@ Then, in the code:
   is saved in the Obsidian vault (`Vault`): the system's own folder picker (SAF), one Markdown file per day,
   appended. Without AndroidX: `DocumentsContract` and the `ContentResolver` directly.
 - **The home screen switch does not need the ADB.** From Android 10 on, the home app is a role the system gives
-  (`RoleManager.createRequestRoleIntent`): the system's own dialog, no root, no keys. The app's own ADB
-  (127.0.0.1:5555) is only used to turn the preinstalled apps off, and only if the port is open (`adb tcpip 5555`
-  from the computer). Without it the home screen still works, the apps just stay on.
+  (`RoleManager.createRequestRoleIntent`): the system's own dialog, no root, no keys. **The manifest has to declare
+  the HOME intent in `<queries>`** — without it the system cannot see the other home apps and the role is never
+  offered (this is why it did not work at first on the Samsung tablet). The app's own ADB (127.0.0.1:5555) is only
+  used to turn the preinstalled apps off, and only if the port is open (`adb tcpip 5555` from the computer).
+  Without it the home screen still works, the apps just stay on.
+- **Never do network on the UI thread.** Android kills the app (`NetworkOnMainThreadException`): the ADB check and
+  the note writing are in threads. The same goes for the disk work.
+- The tablet's own `adbd` can hold a pending debug prompt and then skip the new ones ("prompt currently pending").
+  `adb tcpip 5555` again (from the computer) restarts it and clears that.
 - There is no GPU shader here: the SM-T290 stops at Android 11, and AGSL needs Android 13. The background is the
   sky of the day (`Sky`, the same palettes as the TV) with the real sunrise and sunset (`Sun`, Open-Meteo).
 - `HomeMode` runs every switch as a background job (`ModeJob`) in the main process; the UI is in the `:home` process.
