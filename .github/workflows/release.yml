@@ -1,0 +1,57 @@
+name: Release
+
+# A tag is a release: v1.0, v1.1... The APK is built, signed with the project's key and published.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: The JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: The Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: What the build needs
+        run: |
+          sdkmanager "build-tools;34.0.0" "platforms;android-30"
+          yes | sdkmanager --licenses > /dev/null
+
+      - name: The signing key
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > freemytablet.keystore
+
+      - name: Build
+        run: ./build.sh
+
+      - name: The notes of this version
+        run: |
+          version="${GITHUB_REF_NAME}"
+          awk -v v="$version" '
+            $0 ~ "^## " v { found=1; next }
+            found && /^## / { exit }
+            found { print }
+          ' CHANGELOG.md > notes.md
+          if [ ! -s notes.md ]; then
+            echo "No section for $version in the changelog: the release notes are the commits." > notes.md
+          fi
+          cat notes.md
+
+      - name: The release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Free My Tablet ${{ github.ref_name }}
+          files: FreeMyTablet.apk
+          body_path: notes.md
+          generate_release_notes: true

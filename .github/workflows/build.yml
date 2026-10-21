@@ -1,0 +1,36 @@
+name: Build
+
+# Every push: does the app still build? (the tag builds the release)
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: The JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: The Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: What the build needs
+        run: |
+          sdkmanager "build-tools;34.0.0" "platforms;android-30"
+          yes | sdkmanager --licenses > /dev/null
+
+      - name: Build
+        run: ./build.sh
+
+      - name: The APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: FreeMyTablet
+          path: FreeMyTablet.apk
