@@ -27,9 +27,10 @@ tablet before you do it, and let them do the taps on the tablet.
    degrees) and `city` for their city. Nothing else is needed: there are no keys.
 4. **Build:** `./build.sh` → `FreeMyTablet.apk`. Keep `freemytablet.keystore`: updates must be signed with the same key.
 5. **Install:** `adb connect <IP>:5555` (or `adb devices` over USB) and `adb install -r FreeMyTablet.apk`.
-6. **They switch on the tablet:** *Free My Tablet* → *Home screen* → *Free My Tablet*. The app uses the tablet's own
-   ADB on 127.0.0.1 with its own key, so the tablet asks once more to allow debugging. Don't switch modes from the
-   computer.
+6. **They switch on the tablet:** *Free My Tablet* → *Home screen* → *Free My Tablet*. From Android 10 on, the
+   system asks which home app to use: pick Free My Tablet. The app uses the tablet's own ADB on 127.0.0.1 to turn
+   the preinstalled apps off, so the tablet asks once more to allow debugging (`adb tcpip 5555` from the computer
+   opens the port). Don't switch modes from the computer.
 
    **If the switch stops and asks them to forget the Wi-Fi**, it is the app protecting the network, not a bug. When
    Android turns off an app, it also deletes the Wi-Fi networks that app saved. The switch turns off the setup wizard,
@@ -61,7 +62,7 @@ Then, in the code:
   settings).
 - `HomeMode.PROTECTED`: the system pieces: settings, keyboard, Play Store, the SOS app, the system UI. When in doubt,
   protect it.
-- `HomeApps.DEFAULT_DOCK`: the apps on the dock before the person picks their own.
+- `HomeApps.DEFAULT_FAVORITES`: the apps on the home screen before the person picks their own.
 - Build, install, have them switch on the tablet, read `adb logcat -s FreeMyTablet`, then have them switch back to
   *Original* once and confirm everything returned.
 
@@ -72,8 +73,17 @@ Then, in the code:
 - The home screen is drawn by hand on one Canvas (`HomeView`); the settings screen too (`SettingsActivity`).
   Keep it at 60 fps: no allocations in `onDraw`, no work on the UI thread. The icons are made once, in the
   background (`HomeApps.icon`), and drawn from bitmaps.
-- The tablet is a **touch** device: tap to open, swipe left/right to change page, tap the last slot of the dock for
-  all the apps. The arrows and Enter work too, for a tablet with a keyboard.
+- **The tablet is not a TV.** The home screen is not a grid of every app: it is the clock, the row of apps the
+  person chose (`Prefs.favorites`), and the quick note. The rest of the apps are behind the small button in the
+  corner. The tap opens the app, the long press opens its page in the settings, the arrows and Enter work too (for
+  a tablet with a keyboard).
+- **The quick note** is a real `EditText` (`HomeActivity`), put exactly on the panel the home screen draws, and it
+  is saved in the Obsidian vault (`Vault`): the system's own folder picker (SAF), one Markdown file per day,
+  appended. Without AndroidX: `DocumentsContract` and the `ContentResolver` directly.
+- **The home screen switch does not need the ADB.** From Android 10 on, the home app is a role the system gives
+  (`RoleManager.createRequestRoleIntent`): the system's own dialog, no root, no keys. The app's own ADB
+  (127.0.0.1:5555) is only used to turn the preinstalled apps off, and only if the port is open (`adb tcpip 5555`
+  from the computer). Without it the home screen still works, the apps just stay on.
 - There is no GPU shader here: the SM-T290 stops at Android 11, and AGSL needs Android 13. The background is the
   sky of the day (`Sky`, the same palettes as the TV) with the real sunrise and sunset (`Sun`, Open-Meteo).
 - `HomeMode` runs every switch as a background job (`ModeJob`) in the main process; the UI is in the `:home` process.
@@ -81,16 +91,18 @@ Then, in the code:
 - On-screen text: `Ui.tr("pt", "en")`, with the Spanish in `Spanish.java` (keyed by the English); text built at
   runtime uses `Ui.tr(pt, en, es)`. Add all three. Comments in English, short, only where the why isn't obvious.
 - Settings come from `config.properties` through the generated `out/gen/io/freemytablet/Config.java` (never edit
-  that). What the person changes on the tablet (`Prefs`: dock, apps to turn off, language, theme) wins over those
-  first values.
+  that). What the person changes on the tablet (`Prefs`: the apps on the home screen, the vault, the apps to turn
+  off, the language, the theme) wins over those first values.
 - After any change, `./build.sh` must end with `Built FreeMyTablet.apk`.
 
 ## What is not here yet
 
 - The icon is still the TV's (`app/res/drawable-nodpi/icon.png`): the tablet needs its own.
-- No widgets, no recents screen, no folders, no search.
+- No widgets, no recents screen, no folders, no search, no app drawer with pages.
 - The screensaver is the tablet's own (the TV's `DreamView` was not ported): a dock on the table does not need one.
 - The website (`docs/`) is empty: the TV's is in `../free-my-tv/docs`.
+- The apps' own "web apps" (Moodle, Canvas) are installed by the browser as real apps: they show up in the list
+  like any other, nothing special to do.
 
 ## Always
 
