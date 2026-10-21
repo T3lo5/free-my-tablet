@@ -18,7 +18,7 @@ import java.util.List;
  */
 public class NotesWidget extends AppWidgetProvider {
     @Override public void onUpdate(Context c, AppWidgetManager manager, int[] ids) {
-        for (int id : ids) manager.updateAppWidget(id, views(c));
+        for (int id : ids) update(c, manager, id);
     }
 
     /** Asks the widget to redraw itself (after a note is saved, for instance). */
@@ -26,7 +26,16 @@ public class NotesWidget extends AppWidgetProvider {
         AppWidgetManager manager = AppWidgetManager.getInstance(c);
         int[] ids = manager.getAppWidgetIds(new android.content.ComponentName(c, NotesWidget.class));
         if (ids == null || ids.length == 0) return;
-        for (int id : ids) manager.updateAppWidget(id, views(c));
+        for (int id : ids) update(c, manager, id);
+    }
+
+    /** The notes are read in a thread: the vault is on the disk and the screen cannot wait for it. */
+    private static void update(Context c, AppWidgetManager manager, int id) {
+        final Context app = c.getApplicationContext();
+        new Thread(() -> {
+            RemoteViews views = views(app);
+            manager.updateAppWidget(id, views);
+        }, "widget").start();
     }
 
     private static RemoteViews views(Context c) {
