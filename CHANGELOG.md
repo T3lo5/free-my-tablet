@@ -2,6 +2,11 @@
 
 Everything that changed, newest first.
 
+## v1.12
+
+- **Work areas**: groups of apps (study, work, reading…) that take the place of the row of the home screen.
+  The area is chosen with one tap on the tab, above the apps; the areas are made in the settings.
+
 ## v1.11
 
 - **The widget has a size** (small, medium, big), in the settings. The slot follows the size the widget asks

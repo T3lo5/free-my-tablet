@@ -3,6 +3,9 @@ package io.freemytablet;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -164,6 +167,56 @@ final class Prefs {
     /** The folder inside the vault where the note goes ("" = the root of the vault). */
     static String noteFolder() { return sp().getString("noteFolder", ""); }
     static void setNoteFolder(String folder) { put("noteFolder", folder.trim()); }
+
+    // MARK: - The work areas
+
+    /** A group of apps: a row of the home screen that the person chooses (estudo, trabalho, leitura…). */
+    static final class Area {
+        String name;
+        final List<String> apps = new ArrayList<>();
+
+        Area(String name) {
+            this.name = name;
+        }
+    }
+
+    /** The areas, in the order they were made (empty when there are none). */
+    static List<Area> areas() {
+        List<Area> out = new ArrayList<>();
+        String raw = sp().getString("areas", "");
+        if (raw.isEmpty()) return out;
+        try {
+            JSONArray list = new JSONObject(raw).optJSONArray("areas");
+            if (list == null) return out;
+            for (int i = 0; i < list.length(); i++) {
+                JSONObject one = list.optJSONObject(i);
+                if (one == null) continue;
+                Area area = new Area(one.optString("name", ""));
+                JSONArray apps = one.optJSONArray("apps");
+                if (apps != null) for (int j = 0; j < apps.length(); j++) area.apps.add(apps.optString(j));
+                out.add(area);
+            }
+        } catch (Exception e) {
+            AppLog.w("could not read the areas: " + e.getMessage());
+        }
+        return out;
+    }
+
+    static void setAreas(List<Area> areas) {
+        try {
+            JSONArray list = new JSONArray();
+            for (Area area : areas) {
+                list.put(new JSONObject().put("name", area.name).put("apps", new JSONArray(area.apps)));
+            }
+            put("areas", new JSONObject().put("areas", list).toString());
+        } catch (Exception e) {
+            AppLog.w("could not write the areas: " + e.getMessage());
+        }
+    }
+
+    /** Which area is on the screen (-1 = the apps of the main row). */
+    static int area() { return sp().getInt("area", -1); }
+    static void setArea(int index) { put("area", index); }
 
     // MARK: - The updates
 

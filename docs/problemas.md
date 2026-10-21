@@ -60,7 +60,7 @@ impossível não vira promessa, e o que não faz sentido para um launcher leve f
 | 10 | **Widgets de outro app que querem configuração própria não abrem** (a tela de configuração do outro app não é exportada) | Abrir a configuração pelo sistema em vez de pelo nosso app | pequeno |
 | 11 | **O diretório de armazenamento quase cheio (14%)** | A tela de Espaço já limpa o cache; falta limpar cache de app em uso (o sistema não deixa) | médio |
 | 12 | ~~**Não tem um "modo leitura"**~~ | **Feito na v1.11**: o tema "Leitura" (tela preta, o relógio pequeno, os apps) | — |
-| 13 | **Não tem pastas/áreas de trabalho** (hoje é uma fileira só) | Áreas (ex.: estudo, trabalho, leitura) que trocam a fileira | médio |
+| 13 | ~~**Não tem pastas/áreas de trabalho**~~ | **Feito na v1.12**: as áreas trocam a fileira da tela com um toque | — |
 | 14 | ~~**O app não sabe o que você quer abrir**~~ | **Feito na v1.11**: "Abrir a nota de hoje" (abre o Obsidian na nota do dia) | — |
 | 15 | **A busca no vault só acha pelo nome do arquivo** | Ler o conteúdo dos .md e procurar dentro (mais lento: o SAF pergunta arquivo por arquivo) | médio |
 

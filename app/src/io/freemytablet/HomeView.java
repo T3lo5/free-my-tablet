@@ -34,6 +34,12 @@ public class HomeView extends View implements Choreographer.FrameCallback {
 
     private final List<HomeApps.Item> favorites = new ArrayList<>();
 
+    /** The names of the work areas (the row of tabs above the apps). */
+    private final List<String> areaNames = new ArrayList<>();
+    private final List<RectF> areaRects = new ArrayList<>();
+    private int areaCurrent = -1;   // -1 = the main row of apps
+    private float tabsY;
+
     private final Paint bg = new Paint();
     private final Paint glow = new Paint();
     private final Paint panel = new Paint();
@@ -139,9 +145,22 @@ public class HomeView extends View implements Choreographer.FrameCallback {
             // The icons are made here, off the UI thread: the first frame draws them, it never builds them.
             for (HomeApps.Item item : all) HomeApps.icon(app, item);
             List<HomeApps.Item> chosen = HomeApps.favorites(app, all);
+            // The work areas: the one that is on the screen takes the place of the main row.
+            List<Prefs.Area> areas = Prefs.areas();
+            int index = Prefs.area();
+            if (index >= 0 && index < areas.size()) {
+                chosen = HomeApps.of(areas.get(index).apps, all);
+            }
+            final List<HomeApps.Item> row = chosen;
+            final List<Prefs.Area> list = areas;
+            final int current = index;
             post(() -> {
                 favorites.clear();
-                favorites.addAll(chosen);
+                favorites.addAll(row);
+                areaNames.clear();
+                areaNames.add(Ui.tr("Início", "Home"));
+                for (Prefs.Area area : list) areaNames.add(area.name);
+                areaCurrent = (current >= 0 && current < list.size()) ? current + 1 : 0;
                 setAllApps(all);
                 layoutFavorites();
                 buildBackground();     // the theme may have changed in the settings
@@ -332,6 +351,7 @@ public class HomeView extends View implements Choreographer.FrameCallback {
 
     /** The row with the apps you use. */
     private void drawFavorites(Canvas c) {
+        drawAreas(c);
         if (favorites.isEmpty()) return;
         int rows = (int) Math.ceil(favorites.size() / (float) perRow);
         float top = widgetRect.bottom + dp(16);
@@ -348,6 +368,38 @@ public class HomeView extends View implements Choreographer.FrameCallback {
             label.setColor(Ui.ink());
             c.drawText(item.label, cx - label.measureText(item.label) / 2, cy + iconSize / 2 + dp(18), label);
         }
+    }
+
+    /** The row of tabs: the work areas (only when there is more than the main one). */
+    private void drawAreas(Canvas c) {
+        areaRects.clear();
+        if (areaNames.size() <= 1) return;
+        float y = widgetRect.bottom + dp(18);
+        tabsY = y;
+        float x = dp(24);
+        hint.setTextSize(dp(13));
+        for (int i = 0; i < areaNames.size(); i++) {
+            String name = areaNames.get(i);
+            float tw = hint.measureText(name) + dp(22);
+            if (x + tw > w - dp(24)) break;   // it does not fit: the rest is left out
+            boolean on = i == areaCurrent;
+            panel.setColor(on ? Ui.alpha(Ui.ink(), 0.18f) : Ui.alpha(Ui.ink(), 0.07f));
+            RectF r = new RectF(x, y, x + tw, y + dp(26));
+            areaRects.add(r);
+            c.drawRoundRect(r, dp(13), dp(13), panel);
+            hint.setColor(Ui.ink());
+            c.drawText(name, x + dp(11), y + dp(17), hint);
+            x += tw + dp(8);
+        }
+        hint.setTextSize(dp(15));
+    }
+
+    /** A tap on a tab of the areas: the person changes what is on the screen. */
+    private int areaAt(float x, float y) {
+        for (int i = 0; i < areaRects.size(); i++) {
+            if (areaRects.get(i).contains(x, y)) return i;
+        }
+        return -1;
     }
 
     private void drawIcon(Canvas c, HomeApps.Item item, float cx, float cy, boolean focused) {
@@ -378,6 +430,14 @@ public class HomeView extends View implements Choreographer.FrameCallback {
 
     /** Called when the person taps the search box of the list. */
     public Runnable onSearchTap;
+
+    /** Called when the person taps a work area (the index: -1 = the main row). */
+    public AreaTap onAreaTap;
+
+    /** The work area the person tapped. */
+    public interface AreaTap {
+        void area(int index);
+    }
 
     /** Whether the list of all the apps is open. */
     public boolean isOverlayOpen() {
@@ -580,6 +640,12 @@ public class HomeView extends View implements Choreographer.FrameCallback {
 
     /** A tap on the home screen: an app opens, the all-apps button opens the list. */
     private void tap(float x, float y) {
+        int area = areaAt(x, y);
+        if (area >= 0) {
+            click.move();
+            if (onAreaTap != null) onAreaTap.area(area - 1);   // -1 = the main row
+            return;
+        }
         int index = hitFavorites(x, y);
         if (index >= 0) {
             if (System.currentTimeMillis() - downAt > 550) {

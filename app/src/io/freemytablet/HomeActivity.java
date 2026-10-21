@@ -152,6 +152,7 @@ public class HomeActivity extends Activity {
             if (!open) hideSearch();
         };
         home.onSearchTap = this::showSearch;
+        home.onAreaTap = this::chooseArea;
     }
 
     /** The sync button: the git pull and the copy, done by Termux (that is where git is). */
@@ -219,6 +220,12 @@ public class HomeActivity extends Activity {
             }
             @Override public void afterTextChanged(android.text.Editable s) {}
         });
+    }
+
+    /** The person tapped a work area: the row of apps changes. */
+    private void chooseArea(int index) {
+        Prefs.setArea(index);
+        if (home != null) home.reload();
     }
 
     /** The person tapped the search box of the list: the field appears and the keyboard comes up. */

@@ -145,15 +145,17 @@ public class SettingsActivity extends Activity {
         private long lastFrame;
         private String statusText = "";
 
-        static final int MAIN = 0, FAVORITES = 1, OFF_APPS = 2, SPACE = 3, TALKERS = 4, UPDATES = 5, PANEL = 6;
+        static final int MAIN = 0, FAVORITES = 1, OFF_APPS = 2, SPACE = 3, TALKERS = 4, UPDATES = 5, PANEL = 6,
+                AREAS = 7, AREA_APPS = 8;
 
         /** The lines of the main screen, in the order they are shown. */
-        static final int HOME = 0, ON_SCREEN = 1, VAULT = 2, NOTE_FOLDER = 3, TODAY_NOTE = 4, VAULT_SEARCH = 5,
-                WEATHER = 6, WIDGET = 7, WIDGET_SIZE = 8, SYNC = 9, SPACE_ROW = 10, PANEL_ROW = 11,
-                TALKERS_ROW = 12, UPDATES_ROW = 13, EXPORT = 14, OFF = 15, LANGUAGE = 16, THEME = 17, ABOUT = 18;
-        static final int[] ROWS = {HOME, ON_SCREEN, VAULT, NOTE_FOLDER, TODAY_NOTE, VAULT_SEARCH, WEATHER, WIDGET,
-                WIDGET_SIZE, SYNC, SPACE_ROW, PANEL_ROW, TALKERS_ROW, UPDATES_ROW, EXPORT, OFF, LANGUAGE, THEME,
-                ABOUT};
+        static final int HOME = 0, ON_SCREEN = 1, AREAS_ROW = 2, VAULT = 3, NOTE_FOLDER = 4, TODAY_NOTE = 5,
+                VAULT_SEARCH = 6, WEATHER = 7, WIDGET = 8, WIDGET_SIZE = 9, SYNC = 10, SPACE_ROW = 11,
+                PANEL_ROW = 12, TALKERS_ROW = 13, UPDATES_ROW = 14, EXPORT = 15, OFF = 16, LANGUAGE = 17,
+                THEME = 18, ABOUT = 19;
+        static final int[] ROWS = {HOME, ON_SCREEN, AREAS_ROW, VAULT, NOTE_FOLDER, TODAY_NOTE, VAULT_SEARCH, WEATHER,
+                WIDGET, WIDGET_SIZE, SYNC, SPACE_ROW, PANEL_ROW, TALKERS_ROW, UPDATES_ROW, EXPORT, OFF, LANGUAGE,
+                THEME, ABOUT};
 
         SettingsView(Activity a) {
             super(a);
@@ -220,6 +222,7 @@ public class SettingsActivity extends Activity {
             switch (row) {
                 case HOME: return Ui.tr("Tela de Início", "Home screen");
                 case ON_SCREEN: return Ui.tr("Apps na tela", "Apps on the home screen");
+                case AREAS_ROW: return Ui.tr("Áreas de trabalho", "Work areas");
                 case VAULT: return Ui.tr("Pasta do Obsidian", "Obsidian folder");
                 case NOTE_FOLDER: return Ui.tr("Pasta da nota", "Note folder");
                 case TODAY_NOTE: return Ui.tr("Abrir a nota de hoje", "Open today's note");
@@ -247,6 +250,8 @@ public class SettingsActivity extends Activity {
                         ? Ui.tr("Free My Tablet", "Free My Tablet")
                         : Ui.tr("Original", "Original");
                 case ON_SCREEN: return Ui.tr("Escolher", "Choose");
+                case AREAS_ROW: return Prefs.areas().isEmpty() ? Ui.tr("Criar", "Create")
+                        : Prefs.areas().size() + Ui.tr(" áreas", " areas");
                 case VAULT: return Vault.ready(activity) ? Ui.tr("Escolhida", "Chosen") : Ui.tr("Escolher", "Choose");
                 case NOTE_FOLDER: return Prefs.noteFolder().isEmpty() ? Ui.tr("A raiz do vault", "The vault root")
                         : Prefs.noteFolder();
@@ -309,6 +314,8 @@ public class SettingsActivity extends Activity {
                 drawUpdates(c);
             } else if (screen == PANEL) {
                 drawPanel(c);
+            } else if (screen == AREAS) {
+                drawAreas(c);
             } else {
                 drawChecklist(c);
             }
@@ -335,6 +342,11 @@ public class SettingsActivity extends Activity {
         }
 
         private String title() {
+            if (screen == AREA_APPS) {
+                List<Prefs.Area> list = Prefs.areas();
+                return areaIndex >= 0 && areaIndex < list.size() ? list.get(areaIndex).name
+                        : Ui.tr("Apps", "Apps");
+            }
             return screen == OFF_APPS ? Ui.tr("Apps para desligar", "Apps to turn off")
                     : Ui.tr("Apps na tela", "Apps on the home screen");
         }
@@ -389,6 +401,147 @@ public class SettingsActivity extends Activity {
             }
         }
 
+        /** The work areas: the list of them, and the button to make a new one. */
+        private void drawAreas(Canvas c) {
+            title.setColor(0xFFFFFFFF);
+            c.drawText(Ui.tr("Áreas de trabalho", "Work areas"), dp(20), dp(44), title);
+            float y = top - scroll;
+            for (String line : areaLines) {
+                if (y > bottom + rowH || y + rowH < top) { y += rowH; continue; }
+                rowTitle.setColor(0xFFFFFFFF);
+                c.drawText(line, dp(20), y + dp(30), rowTitle);
+                y += rowH;
+            }
+        }
+
+        private List<String> areaLines = new ArrayList<>();
+        private int areaIndex = -1;   // the area whose apps are being chosen
+
+        /** The screen of the work areas. */
+        private void openAreas() {
+            screen = AREAS;
+            scroll = 0;
+            areaLines = new ArrayList<>();
+            List<Prefs.Area> areas = Prefs.areas();
+            int current = Prefs.area();
+            for (int i = 0; i < areas.size(); i++) {
+                Prefs.Area area = areas.get(i);
+                areaLines.add((i == current ? "• " : "") + area.name + "   ("
+                        + area.apps.size() + Ui.tr(" apps)", " apps)"));
+            }
+            areaLines.add(Ui.tr("+ Nova área", "+ New area"));
+            invalidate();
+        }
+
+        /** A tap in the list of the areas. */
+        private void tapArea(int index) {
+            List<Prefs.Area> areas = Prefs.areas();
+            if (index < 0 || index > areas.size()) return;
+            if (index == areas.size()) {       // a new area
+                new android.widget.EditText(activity);
+                final android.widget.EditText field = new android.widget.EditText(activity);
+                field.setHint(Ui.tr("Ex.: Estudo", "e.g. Study"));
+                field.setSingleLine();
+                field.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_DONE);
+                int pad = Math.round(dp(20));
+                field.setPadding(pad, Math.round(dp(12)), pad, 0);
+                final android.app.AlertDialog[] dialog = new android.app.AlertDialog[1];
+                field.setOnEditorActionListener((v, actionId, event) -> {
+                    newArea(field.getText().toString());
+                    if (dialog[0] != null) dialog[0].dismiss();
+                    return true;
+                });
+                dialog[0] = new AlertDialog.Builder(activity)
+                        .setTitle(Ui.tr("Nova área", "New area"))
+                        .setView(field)
+                        .setNegativeButton(Ui.tr("Cancelar", "Cancel"), null)
+                        .setPositiveButton("OK", (d, w) -> newArea(field.getText().toString()))
+                        .show();
+                return;
+            }
+            final Prefs.Area area = areas.get(index);
+            new AlertDialog.Builder(activity)
+                    .setTitle(area.name)
+                    .setItems(new String[] {
+                            Ui.tr("Escolher os apps", "Choose the apps"),
+                            Ui.tr("Renomear", "Rename"),
+                            Ui.tr("Apagar", "Delete")},
+                            (d, which) -> {
+                                if (which == 0) openAreaApps(index);
+                                else if (which == 1) renameArea(index);
+                                else deleteArea(index);
+                            })
+                    .setNegativeButton(Ui.tr("Cancelar", "Cancel"), null)
+                    .show();
+        }
+
+        /** Makes a new area with that name. */
+        private void newArea(String name) {
+            name = name.trim();
+            if (name.isEmpty()) return;
+            List<Prefs.Area> list = new ArrayList<>(Prefs.areas());
+            list.add(new Prefs.Area(name));
+            Prefs.setAreas(list);
+            openAreas();
+        }
+
+        /** The apps of an area (the checklist). */
+        private void openAreaApps(int index) {
+            areaIndex = index;
+            screen = AREA_APPS;
+            scroll = 0;
+            picked = new ArrayList<>();
+            apps = HomeApps.all(activity);
+            List<Prefs.Area> list = Prefs.areas();
+            if (index >= 0 && index < list.size()) picked.addAll(list.get(index).apps);
+            invalidate();
+        }
+
+        /** Changes the name of an area. */
+        private void renameArea(int index) {
+            List<Prefs.Area> list = new ArrayList<>(Prefs.areas());
+            if (index < 0 || index >= list.size()) return;
+            final android.widget.EditText field = new android.widget.EditText(activity);
+            field.setText(list.get(index).name);
+            field.setSingleLine();
+            int pad = Math.round(dp(20));
+            field.setPadding(pad, Math.round(dp(12)), pad, 0);
+            final android.app.AlertDialog[] dialog = new android.app.AlertDialog[1];
+            field.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_DONE);
+            field.setOnEditorActionListener((v, actionId, event) -> {
+                String name = field.getText().toString().trim();
+                if (!name.isEmpty()) {
+                    list.get(index).name = name;
+                    Prefs.setAreas(list);
+                }
+                if (dialog[0] != null) dialog[0].dismiss();
+                openAreas();
+                return true;
+            });
+            dialog[0] = new AlertDialog.Builder(activity)
+                    .setTitle(Ui.tr("Renomear", "Rename"))
+                    .setView(field)
+                    .setNegativeButton(Ui.tr("Cancelar", "Cancel"), null)
+                    .setPositiveButton("OK", (d, w) -> {
+                        String name = field.getText().toString().trim();
+                        if (name.isEmpty()) return;
+                        list.get(index).name = name;
+                        Prefs.setAreas(list);
+                        openAreas();
+                    })
+                    .show();
+        }
+
+        /** Deletes an area. */
+        private void deleteArea(int index) {
+            List<Prefs.Area> list = new ArrayList<>(Prefs.areas());
+            if (index < 0 || index >= list.size()) return;
+            list.remove(index);
+            Prefs.setAreas(list);
+            if (Prefs.area() >= list.size()) Prefs.setArea(-1);
+            openAreas();
+        }
+
         /** The checklist: the apps, with a box on the ones that are picked. */
         private void drawChecklist(Canvas c) {
             title.setColor(0xFFFFFFFF);
@@ -440,6 +593,7 @@ public class SettingsActivity extends Activity {
                     else if (screen == SPACE) tapSpace((int) ((e.getY() + scroll - top + rowH / 2) / rowH));
                     else if (screen == TALKERS) tapTalker((int) ((e.getY() + scroll - top + rowH / 2) / rowH));
                     else if (screen == UPDATES) tapUpdate((int) ((e.getY() + scroll - top + rowH / 2) / rowH));
+                    else if (screen == AREAS) tapArea((int) ((e.getY() + scroll - top + rowH / 2) / rowH));
                     else tapChecklist(e.getY());
                     return true;
                 }
@@ -456,6 +610,7 @@ public class SettingsActivity extends Activity {
             else if (screen == PANEL) items = panelLines.size();
             else if (screen == TALKERS) items = talkerLines.size();
             else if (screen == UPDATES) items = updateLines.size();
+            else if (screen == AREAS) items = areaLines.size();
             else items = apps.size();
             return Math.max(0, items * rowH - (bottom - top));
         }
@@ -468,6 +623,7 @@ public class SettingsActivity extends Activity {
             switch (ROWS[index]) {
                 case HOME: askSwitch(); break;
                 case ON_SCREEN: openChecklist(FAVORITES); break;
+                case AREAS_ROW: openAreas(); break;
                 case VAULT: Vault.pick(activity); break;
                 case NOTE_FOLDER: askNoteFolder(); break;
                 case TODAY_NOTE: openTodayNote(); break;
@@ -1046,6 +1202,13 @@ public class SettingsActivity extends Activity {
             if (screen == OFF_APPS) {
                 Prefs.setOptionalOff(picked);
                 HomeMode.applyOptional(activity);
+            } else if (screen == AREA_APPS) {
+                List<Prefs.Area> list = new ArrayList<>(Prefs.areas());
+                if (areaIndex >= 0 && areaIndex < list.size()) {
+                    list.get(areaIndex).apps.clear();
+                    list.get(areaIndex).apps.addAll(picked);
+                    Prefs.setAreas(list);
+                }
             } else {
                 Prefs.setFavorites(picked);
             }

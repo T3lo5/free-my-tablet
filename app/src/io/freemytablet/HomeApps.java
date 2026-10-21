@@ -105,9 +105,15 @@ final class HomeApps {
     static List<Item> favorites(Context c, List<Item> all) {
         List<String> wanted = Prefs.favorites();
         if (wanted == null) wanted = defaultFavorites();
+        return of(wanted, all);
+    }
+
+    /** The apps of a list of packages (the ones that are still installed). */
+    static List<Item> of(List<String> wanted, List<Item> all) {
         Map<String, Item> byPkg = new HashMap<>();
         for (Item item : all) byPkg.put(item.pkg, item);
         List<Item> out = new ArrayList<>();
+        if (wanted == null) return out;
         for (String pkg : wanted) {
             Item item = byPkg.get(pkg);
             if (item != null) out.add(item);
