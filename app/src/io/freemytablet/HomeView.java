@@ -63,7 +63,9 @@ public class HomeView extends View implements Choreographer.FrameCallback {
     private String clockText = "", dateText = "";
     private long clockAt;
     private boolean running;
+    private boolean animating;
     private long lastFrame;
+    private final android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
 
     public HomeView(Activity a) {
         super(a);
@@ -85,19 +87,40 @@ public class HomeView extends View implements Choreographer.FrameCallback {
 
     // MARK: - Life cycle
 
-    /** Loads the favorites and starts the clock. */
+    /**
+     * Loads the favorites and starts the clock.
+     *
+     * The screen is not redrawn all the time: the background is still (a gradient, nothing moves), so the only
+     * reasons to draw are the clock, an animation that is running, and a message on the screen. A home screen
+     * that redraws 60 times a second costs a third of the CPU of the tablet (measured: 37% here, against 0.1%
+     * of the stock launcher).
+     */
     public void resume() {
         reload();
         running = true;
-        lastFrame = 0;
-        Choreographer.getInstance().postFrameCallback(this);
+        handler.post(tick);
     }
 
     public void pause() {
         running = false;
+        handler.removeCallbacks(tick);
+        animating = false;
         Choreographer.getInstance().removeFrameCallback(this);
         click.release();
     }
+
+    /** The clock, once a minute. */
+    private final Runnable tick = new Runnable() {
+        @Override public void run() {
+            if (!running) return;
+            long now = System.currentTimeMillis();
+            clockText = Ui.clock(now);
+            dateText = Ui.date(now);
+            invalidate();
+            // The next minute, a little after it (so the clock does not change a second too early).
+            handler.postDelayed(this, 60_000 - (now % 60_000) + 500);
+        }
+    };
 
     public void destroy() {
         pause();
@@ -122,19 +145,29 @@ public class HomeView extends View implements Choreographer.FrameCallback {
         }, "apps").start();
     }
 
+    /** Starts the animation loop (it stops by itself when nothing is moving). */
+    private void startAnimation() {
+        if (animating || !running) return;
+        animating = true;
+        lastFrame = 0;
+        Choreographer.getInstance().postFrameCallback(this);
+    }
+
     @Override public void doFrame(long frameTimeNanos) {
         if (!running) return;
         if (lastFrame == 0) lastFrame = frameTimeNanos;
-        float dt = Math.min(0.05f, (frameTimeNanos - lastFrame) / 1_000_000_000f);
         lastFrame = frameTimeNanos;
-        long now = System.currentTimeMillis();
-        if (now / 60000 != clockAt / 60000) {
-            clockAt = now;
-            clockText = Ui.clock(now);
-            dateText = Ui.date(now);
+        if (noticeVisible()) {   // the message fades away on its own
+            invalidate();
+            Choreographer.getInstance().postFrameCallback(this);
+        } else {
+            animating = false;   // nothing moves: the screen rests until something happens
         }
-        invalidate();
-        Choreographer.getInstance().postFrameCallback(this);
+    }
+
+    /** Whether a message is still on the screen (it fades away on its own). */
+    private boolean noticeVisible() {
+        return !noticeText.isEmpty() && System.currentTimeMillis() - noticeAt < 5000;
     }
 
     /** The row of apps: the number of columns, balanced (six apps make two rows of three, not five and one). */
@@ -435,6 +468,7 @@ public class HomeView extends View implements Choreographer.FrameCallback {
             allOpen = true;
             allScroll = 0;
             invalidate();
+            startAnimation();
             return;
         }
         if (hitSyncButton(x, y)) {
@@ -491,6 +525,7 @@ public class HomeView extends View implements Choreographer.FrameCallback {
         HomeApps.open(activity, allApps.get(index));
         allOpen = false;
         invalidate();
+        startAnimation();
     }
 
     /** Closes the list of all the apps (the back button). */
@@ -498,6 +533,7 @@ public class HomeView extends View implements Choreographer.FrameCallback {
         if (!allOpen) return false;
         allOpen = false;
         invalidate();
+        startAnimation();
         return true;
     }
 
@@ -506,6 +542,7 @@ public class HomeView extends View implements Choreographer.FrameCallback {
         noticeText = text == null ? "" : text;
         noticeAt = System.currentTimeMillis();
         invalidate();
+        startAnimation();   // the message fades away
     }
 
     /** The message at the bottom. */
