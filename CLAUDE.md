@@ -1,0 +1,103 @@
+# Free My Tablet: notes for Claude
+
+A home screen for Android tablets that replaces the stock one, plus a settings app that switches between
+Free My Tablet and the tablet's original home screen. A plain Android app in Java, built without Gradle by
+`build.sh`. It is the sibling of **Free My TV** (`../free-my-tv`): the same ideas, the same code style, the same
+safety net — but for a tablet, with the touch instead of the remote.
+
+The first tablet is a **Galaxy Tab A 8.0 (2019), SM-T290** (Brazil): Android 9, 8" 1280×800, 2 GB of RAM,
+Exynos 7904. That is the machine everything is built for: an old, slow tablet that has to feel light.
+The website is not in this repo yet.
+
+The person you're helping may not be technical. Keep it short and friendly, say what you're about to do on their
+tablet before you do it, and let them do the taps on the tablet.
+
+## Installing it on a tablet
+
+1. **Ask** for the tablet's IP address (if it is over USB, skip this) and their city, if they didn't say.
+2. **Tools:** a JDK 17+, the Android SDK command-line tools (build-tools 34+, platform android-30) and adb. Check
+   what's already there (`java -version`, `$ANDROID_HOME`, `adb version`) and install only what's missing.
+   - macOS: `brew install --cask temurin android-commandlinetools android-platform-tools`, then
+     `sdkmanager "build-tools;34.0.0" "platforms;android-30"`.
+   - Linux: OpenJDK 17, Android's command-line tools and adb from the package manager, then the same `sdkmanager` line.
+   - Windows: WSL, then as on Linux.
+   - **No JDK on the machine?** Docker works: `docker run --rm -v "$PWD:/work" -v "$HOME/Android/Sdk:/opt/android-sdk"
+     -w /work -e ANDROID_HOME=/opt/android-sdk freemytablet-build bash ./build.sh` (the image has a JDK 17 and `zip`).
+3. **Settings:** run `./build.sh` once; it creates `config.properties`. Fill in `latitude` and `longitude` (decimal
+   degrees) and `city` for their city. Nothing else is needed: there are no keys.
+4. **Build:** `./build.sh` → `FreeMyTablet.apk`. Keep `freemytablet.keystore`: updates must be signed with the same key.
+5. **Install:** `adb connect <IP>:5555` (or `adb devices` over USB) and `adb install -r FreeMyTablet.apk`.
+6. **They switch on the tablet:** *Free My Tablet* → *Home screen* → *Free My Tablet*. The app uses the tablet's own
+   ADB on 127.0.0.1 with its own key, so the tablet asks once more to allow debugging. Don't switch modes from the
+   computer.
+
+   **If the switch stops and asks them to forget the Wi-Fi**, it is the app protecting the network, not a bug. When
+   Android turns off an app, it also deletes the Wi-Fi networks that app saved. The switch turns off the setup wizard,
+   and that is often the app that saved the network during the setup — so the switch would take the tablet offline for
+   good, and *Original* re-enables apps but cannot bring a deleted network back. The app therefore stops before
+   changing anything.
+
+   The fix is to make the network belong to someone else. On the tablet: *Settings* → *Connections* → *Wi-Fi* → the
+   network → *Forget*, then connect to it again with the password. Now the Settings app owns it, and the Settings app
+   is never turned off (it is on the protected list), so the network survives the switch.
+7. **Check:** `adb logcat -s FreeMyTablet` shows what the switch did.
+
+## Adapting it to another tablet
+
+Read first, change after. Read-only commands that tell you what the tablet has:
+
+```bash
+adb shell getprop ro.product.brand; adb shell getprop ro.product.model; adb shell getprop ro.build.version.release
+adb shell wm size; adb shell wm density          # the screen and how many dp it has
+adb shell cmd package query-activities --brief -a android.intent.action.MAIN -c android.intent.category.HOME
+adb shell cmd role get-role-holders android.app.role.HOME
+adb shell pm list packages -s     # the system apps (the ones the manufacturer preinstalled)
+```
+
+Then, in the code:
+
+- `HomeMode.DEBLOAT`: the manufacturer's promo, demo and telemetry apps, one comment per line. Only those.
+- `HomeMode.OPTIONAL`: the apps that are bloat for some and useful for others (the person turns them off in the
+  settings).
+- `HomeMode.PROTECTED`: the system pieces: settings, keyboard, Play Store, the SOS app, the system UI. When in doubt,
+  protect it.
+- `HomeApps.DEFAULT_DOCK`: the apps on the dock before the person picks their own.
+- Build, install, have them switch on the tablet, read `adb logcat -s FreeMyTablet`, then have them switch back to
+  *Original* once and confirm everything returned.
+
+## The code
+
+- Java 8 language level, minSdk 28 (Android 9), targetSdk 30 (Android 11, the tablet's last version). No Gradle, no
+  libraries: only the Android SDK.
+- The home screen is drawn by hand on one Canvas (`HomeView`); the settings screen too (`SettingsActivity`).
+  Keep it at 60 fps: no allocations in `onDraw`, no work on the UI thread. The icons are made once, in the
+  background (`HomeApps.icon`), and drawn from bitmaps.
+- The tablet is a **touch** device: tap to open, swipe left/right to change page, tap the last slot of the dock for
+  all the apps. The arrows and Enter work too, for a tablet with a keyboard.
+- There is no GPU shader here: the SM-T290 stops at Android 11, and AGSL needs Android 13. The background is the
+  sky of the day (`Sky`, the same palettes as the TV) with the real sunrise and sunset (`Sun`, Open-Meteo).
+- `HomeMode` runs every switch as a background job (`ModeJob`) in the main process; the UI is in the `:home` process.
+  `Watchdog` goes back to the stock home screen after 3 crashes in 5 minutes.
+- On-screen text: `Ui.tr("pt", "en")`, with the Spanish in `Spanish.java` (keyed by the English); text built at
+  runtime uses `Ui.tr(pt, en, es)`. Add all three. Comments in English, short, only where the why isn't obvious.
+- Settings come from `config.properties` through the generated `out/gen/io/freemytablet/Config.java` (never edit
+  that). What the person changes on the tablet (`Prefs`: dock, apps to turn off, language, theme) wins over those
+  first values.
+- After any change, `./build.sh` must end with `Built FreeMyTablet.apk`.
+
+## What is not here yet
+
+- The icon is still the TV's (`app/res/drawable-nodpi/icon.png`): the tablet needs its own.
+- No widgets, no recents screen, no folders, no search.
+- The screensaver is the tablet's own (the TV's `DreamView` was not ported): a dock on the table does not need one.
+- The website (`docs/`) is empty: the TV's is in `../free-my-tv/docs`.
+
+## Always
+
+- Never turn off an app that saved a Wi-Fi network: Android deletes its networks and Original can't bring them
+  back (`wifiOwners` in `HomeMode`).
+- Never commit `config.properties`, `*.keystore` or any key.
+- Never uninstall or clear the data of system apps; only `pm disable-user --user 0`, through `HomeMode`, so
+  *Original* can bring it back.
+- Don't change the tablet's picture, sound, network or account settings.
+- Keep the way back working: the *Original* mode and the watchdog.

@@ -1,0 +1,16 @@
+# The build
+/out/
+/out.root/
+*.apk
+*.idsig
+
+# The settings and the keys: never in git
+config.properties
+*.keystore
+*.jks
+
+# The editors
+.idea/
+.vscode/
+*.iml
+.DS_Store
