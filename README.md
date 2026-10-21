@@ -205,3 +205,6 @@ Every push is built by GitHub to make sure it compiles, and every tag publishes 
 The research behind the choices — the complaints people have about tablets, what the internet says about them,
 and how to make one use less — is in [`docs/pesquisa.md`](docs/pesquisa.md) (in Portuguese, with the numbers
 measured on a Galaxy Tab A 8.0).
+
+And the list of problems itself: what was fixed, what can still be fixed, what nobody can fix, and what would be
+a bad idea for a launcher this light — in [`docs/problemas.md`](docs/problemas.md).
