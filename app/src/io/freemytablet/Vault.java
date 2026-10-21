@@ -14,6 +14,10 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Date;
 import java.util.Locale;
 
@@ -180,6 +184,74 @@ final class Vault {
             Uri file = find(c.getContentResolver(), folder, name);
             if (file != null) DocumentsContract.deleteDocument(c.getContentResolver(), file);
         } catch (Exception ignored) {
+        }
+    }
+
+    /** A note of the vault. */
+    static final class Note {
+        final String title;     // the name without ".md"
+        final String path;      // the path inside the vault ("00 - Painel/Home.md")
+        final String vault;     // the name of the vault folder
+        final long modified;
+
+        Note(String title, String path, String vault, long modified) {
+            this.title = title;
+            this.path = path;
+            this.vault = vault;
+            this.modified = modified;
+        }
+    }
+
+    /** The notes of the vault, the most recent first (the folders are looked into too). */
+    static List<Note> notes(Context c) {
+        List<Note> out = new ArrayList<>();
+        String tree = Prefs.vault();
+        if (tree.isEmpty()) return out;
+        try {
+            Uri folder = Uri.parse(tree);
+            String id = DocumentsContract.getTreeDocumentId(folder);
+            int slash = id.lastIndexOf('/');
+            String vault = slash < 0 ? id : id.substring(slash + 1);
+            walk(c.getContentResolver(), folder, "", vault, out, 0);
+        } catch (Exception e) {
+            AppLog.w("could not read the notes: " + e.getMessage());
+        }
+        Collections.sort(out, new Comparator<Note>() {
+            @Override public int compare(Note a, Note b) {
+                return Long.compare(b.modified, a.modified);
+            }
+        });
+        return out;
+    }
+
+    /** Looks through a folder and the ones inside it (up to three levels, sixty notes). */
+    private static void walk(ContentResolver resolver, Uri folder, String prefix, String vault, List<Note> out, int depth) {
+        try {
+            Uri children = DocumentsContract.buildChildDocumentsUriUsingTree(folder,
+                    DocumentsContract.getTreeDocumentId(folder));
+            try (android.database.Cursor cursor = resolver.query(children,
+                    new String[] {DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+                            DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+                            DocumentsContract.Document.COLUMN_MIME_TYPE,
+                            DocumentsContract.Document.COLUMN_LAST_MODIFIED}, null, null, null)) {
+                if (cursor == null) return;
+                while (cursor.moveToNext() && out.size() < 60) {
+                    String name = cursor.getString(1);
+                    String mime = cursor.getString(2);
+                    if (name == null || name.startsWith(".")) continue;
+                    if (DocumentsContract.Document.MIME_TYPE_DIR.equals(mime)) {
+                        if (depth < 3) {
+                            walk(resolver, DocumentsContract.buildDocumentUriUsingTree(folder, cursor.getString(0)),
+                                    prefix + name + "/", vault, out, depth + 1);
+                        }
+                    } else if (name.endsWith(".md")) {
+                        out.add(new Note(name.substring(0, name.length() - 3), prefix + name, vault,
+                                cursor.getLong(3)));
+                    }
+                }
+            }
+        } catch (Exception e) {
+            AppLog.w("could not look in a folder of the vault: " + e.getMessage());
         }
     }
 }

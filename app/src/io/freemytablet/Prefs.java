@@ -33,6 +33,11 @@ final class Prefs {
         version++;
     }
 
+    private static void put(String key, int value) {
+        sp().edit().putInt(key, value).apply();
+        version++;
+    }
+
     private static void put(String key, boolean value) {
         sp().edit().putBoolean(key, value).apply();
         version++;
@@ -127,6 +132,12 @@ final class Prefs {
         for (String p : packages) sb.append(sb.length() == 0 ? "" : ",").append(p);
         put("optionalOff", sb.toString());
     }
+
+    // MARK: - The widget on the home screen
+
+    /** The id of the widget in the slot (0 when there is none). */
+    static int widgetId() { return sp().getInt("widgetId", 0); }
+    static void setWidgetId(int id) { put("widgetId", id); }
 
     // MARK: - The vault (the Obsidian folder for the quick note)
 

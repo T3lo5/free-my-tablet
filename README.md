@@ -36,6 +36,8 @@ nothing is ever uninstalled.
   Termux, your reader, the webapps you installed), and a small button for the rest.
 - **A quick note.** Write on the home screen without opening anything: the note goes straight into your
   Obsidian vault, as a Markdown file, one per day.
+- **A widget.** Pick it in the system's own widget picker: our widget shows the last notes of your vault and a
+  tap opens them in Obsidian. Every other widget of the tablet works too.
 - **A sync button.** The git pull and the copy over your vault, in one tap: no Termux, no copying folders by
   hand. (Termux does the work — that is where git is.)
 - **Nothing extra.** No ads, no sponsored rows, no promo widgets, no analytics, no account.
@@ -97,6 +99,7 @@ The settings open from the app's icon (in *All apps*, the button at the bottom r
 | *Apps on the home screen* | The apps in the row (the ones you use) |
 | *Obsidian folder* | Where the quick note is saved (the system's folder picker) |
 | *Weather card* | The temperature on the home screen, on or off |
+| *Widget* | The widget in the slot (the system's own picker) |
 | *Sync* | The git folder in Termux and the command that pulls |
 | *Apps to turn off* | The preinstalled apps you never use (Bixby, Samsung Internet, the Play apps…) |
 | *Language* | Automatic, Português, English, Español |

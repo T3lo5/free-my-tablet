@@ -32,6 +32,8 @@ import java.util.List;
 public class SettingsActivity extends Activity {
     /** The system's own dialog to choose the home screen. */
     static final int REQ_ROLE = 42;
+    /** The widget that asks for its own settings. */
+    static final int REQ_WIDGET = 45;
     private SettingsView view;
 
     @Override protected void onCreate(Bundle savedInstanceState) {
@@ -45,6 +47,13 @@ public class SettingsActivity extends Activity {
     /** The user picked the home screen in the system's dialog, or the Obsidian folder. */
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQ_WIDGET) {
+            // The person picked a widget in the system's picker (or cancelled).
+            int id = data == null ? 0 : data.getIntExtra(android.appwidget.AppWidgetManager.EXTRA_APPWIDGET_ID, 0);
+            if (id != 0) Widgets.picked(this, REQ_WIDGET, id);
+            view.reload();
+            return;
+        }
         if (requestCode == REQ_ROLE) {
             if (resultCode != RESULT_OK) {
                 view.notice(Ui.tr("Você escolheu não trocar o Início.", "You chose not to change the home screen."));
@@ -184,6 +193,7 @@ public class SettingsActivity extends Activity {
             out.add(Ui.tr("Apps na tela", "Apps on the home screen"));
             out.add(Ui.tr("Pasta do Obsidian", "Obsidian folder"));
             out.add(Ui.tr("Card do tempo", "Weather card"));
+            out.add(Ui.tr("Widget", "Widget"));
             out.add(Ui.tr("Sincronizar", "Sync"));
             out.add(Ui.tr("Apps para desligar", "Apps to turn off"));
             out.add(Ui.tr("Idioma", "Language"));
@@ -202,14 +212,15 @@ public class SettingsActivity extends Activity {
                 case 1: return Ui.tr("Escolher", "Choose");
                 case 2: return Vault.ready(activity) ? Ui.tr("Escolhida", "Chosen") : Ui.tr("Escolher", "Choose");
                 case 3: return Prefs.weatherCard() ? Ui.tr("Ligado", "On") : Ui.tr("Desligado", "Off");
-                case 4: return Ui.tr("Ajustar", "Set up");
-                case 5: return Ui.tr("Apps que você não usa", "Apps you don't use");
-                case 6: {
+                case 4: return Prefs.widgetId() == 0 ? Ui.tr("Escolher", "Choose") : Ui.tr("Colocado", "Placed");
+                case 5: return Ui.tr("Ajustar", "Set up");
+                case 6: return Ui.tr("Apps que você não usa", "Apps you don't use");
+                case 7: {
                     String l = Prefs.language();
                     return "auto".equals(l) ? Ui.tr("Automático", "Automatic")
                             : "pt".equals(l) ? "Português" : "es".equals(l) ? "Español" : "English";
                 }
-                case 7: {
+                case 8: {
                     String t = Prefs.theme();
                     return "light".equals(t) ? Ui.tr("Claro", "Light") : "dark".equals(t) ? Ui.tr("Escuro", "Dark")
                             : Ui.tr("Automático", "Automatic");
@@ -329,7 +340,9 @@ public class SettingsActivity extends Activity {
 
         /** How far the list can go: nothing to scroll when everything fits. */
         private float maxScroll() {
-            int items = screen == MAIN ? rows.size() : apps.size();
+            int items;
+            if (screen == MAIN) items = rows.size();
+            else items = apps.size();
             return Math.max(0, items * rowH - (bottom - top));
         }
 
@@ -346,12 +359,32 @@ public class SettingsActivity extends Activity {
                     Prefs.setWeatherCard(!Prefs.weatherCard());
                     reload();
                     break;
-                case 4: askSync(); break;
-                case 5: openChecklist(OFF_APPS); break;
-                case 6: askLanguage(); break;
-                case 7: askTheme(); break;
+                case 4: askWidget(); break;
+                case 5: askSync(); break;
+                case 6: openChecklist(OFF_APPS); break;
+                case 7: askLanguage(); break;
+                case 8: askTheme(); break;
                 default: askAbout(); break;
             }
+        }
+
+        /** The widget: the system's own picker (with the previews), or taking the one that is there off. */
+        private void askWidget() {
+            final boolean has = Prefs.widgetId() != 0;
+            String[] options = has
+                    ? new String[] {Ui.tr("Escolher outro", "Choose another"), Ui.tr("Tirar o widget", "Take the widget off")}
+                    : new String[] {Ui.tr("Escolher um widget", "Choose a widget")};
+            new AlertDialog.Builder(activity)
+                    .setTitle(Ui.tr("Widget na tela", "Widget on the home screen"))
+                    .setItems(options, (d, which) -> {
+                        if (has && which == 1) {
+                            Widgets.remove(activity);
+                            reload();
+                        } else {
+                            Widgets.pick(activity, REQ_WIDGET);
+                        }
+                    })
+                    .show();
         }
 
         /** The sync: the working folder in Termux and the command that pulls. */

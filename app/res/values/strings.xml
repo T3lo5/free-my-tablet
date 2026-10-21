@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Free My Tablet</string>
+    <string name="widget_notes_title">Últimas notas</string>
+    <string name="widget_notes_empty">Nenhuma nota ainda</string>
 </resources>

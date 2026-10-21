@@ -1,6 +1,10 @@
 package io.freemytablet;
 
 import android.app.Activity;
+import android.appwidget.AppWidgetHost;
+import android.appwidget.AppWidgetHostView;
+import android.appwidget.AppWidgetManager;
+import android.appwidget.AppWidgetProviderInfo;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
@@ -38,6 +42,8 @@ public class HomeActivity extends Activity {
 
     private HomeView home;
     private EditText note;
+    private AppWidgetHost host;          // the widget in the slot
+    private AppWidgetHostView widgetView;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private int lastNotices = -1;
     private boolean running;
@@ -45,6 +51,8 @@ public class HomeActivity extends Activity {
     private String pendingNote = "";
 
     /** Puts the text field exactly on the note panel of the home screen. */
+    private Root root;
+
     private final class Root extends FrameLayout {
         Root(Context c) {
             super(c);
@@ -60,6 +68,15 @@ public class HomeActivity extends Activity {
             note.measure(View.MeasureSpec.makeMeasureSpec(right - left, View.MeasureSpec.EXACTLY),
                     View.MeasureSpec.makeMeasureSpec(bottom - top, View.MeasureSpec.EXACTLY));
             note.layout(left, top, right, bottom);
+            if (widgetView != null) {
+                RectF area = home.widgetBounds();
+                int wl = Math.round(area.left), wt = Math.round(area.top);
+                int wr = Math.round(area.right), wb = Math.round(area.bottom);
+                // Measured again with the exact size: without it the widget's own views stay with no size.
+                widgetView.measure(View.MeasureSpec.makeMeasureSpec(wr - wl, View.MeasureSpec.EXACTLY),
+                        View.MeasureSpec.makeMeasureSpec(wb - wt, View.MeasureSpec.EXACTLY));
+                widgetView.layout(wl, wt, wr, wb);
+            }
         }
     }
 
@@ -99,7 +116,9 @@ public class HomeActivity extends Activity {
         home = new HomeView(this);
         note = new EditText(this);
         styleNote();
-        Root root = new Root(this);
+        host = new AppWidgetHost(this, Widgets.HOST_ID);
+        host.startListening();
+        root = new Root(this);
         root.addView(home, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT));
         root.addView(note, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
@@ -250,6 +269,7 @@ public class HomeActivity extends Activity {
     @Override protected void onResume() {
         super.onResume();
         Weather.refresh(this);
+        showWidget();
         if (home != null) {
             if (prefsVersion != Prefs.version) {   // the favorites or the theme changed in the settings
                 prefsVersion = Prefs.version;
@@ -261,7 +281,33 @@ public class HomeActivity extends Activity {
         handler.post(poll);
     }
 
+    /** Puts the widget of the slot on the home screen (the person chose it in the settings). */
+    private void showWidget() {
+        int id = Prefs.widgetId();
+        if (id == 0) {
+            if (widgetView != null) widgetView.setVisibility(View.GONE);
+            return;
+        }
+        AppWidgetProviderInfo info = AppWidgetManager.getInstance(this).getAppWidgetInfo(id);
+        if (info == null) {
+            Prefs.setWidgetId(0);
+            return;
+        }
+        if (widgetView == null) {
+            widgetView = host.createView(this, id, info);
+            widgetView.setAppWidget(id, info);
+            root.addView(widgetView, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT));
+        } else {
+            widgetView.setAppWidget(id, info);
+        }
+        widgetView.setVisibility(View.VISIBLE);
+        root.requestLayout();
+        NotesWidget.refresh(this);   // the notes may have changed since the last time
+    }
+
     @Override protected void onPause() {
+        if (host != null) host.stopListening();
         running = false;
         handler.removeCallbacks(poll);
         if (home != null) home.pause();

@@ -108,6 +108,12 @@ Then, in the code:
   arguments of the Termux service go as a **String array** (one argument each) and the service is started with
   `startForegroundService` (Android 11 blocks a plain service start from the background). The script and its log
   are excluded from the copy (the copy empties the vault: the log is being written while it runs).
+- **The widget** (the slot under the clock) is picked in the system's own widget picker, so every widget of the
+  tablet works. Ours is "Últimas notas": the last notes of the vault, a tap opens them in Obsidian
+  (`obsidian://open?vault=…&file=…`). Two traps: a widget is drawn by the system, so the layout can only have the
+  plain attributes (the colors and the sizes go through `setTextColor`/`setTextViewTextSize`), and the
+  `AppWidgetHostView` has to be **measured** before it is laid out (without that, its own views stay with no size
+  and the widget shows an empty panel).
 - **The theme** (automatic, light, dark) really changes the background: `Sky.light`/`Sky.dark` instead of the sky
   of the hour.
 - **The weather card** (top right): the temperature, the symbol and the city, from Open-Meteo (`Weather`), with a

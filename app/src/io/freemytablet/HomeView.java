@@ -53,6 +53,7 @@ public class HomeView extends View implements Choreographer.FrameCallback {
     private float density, iconSize, labelSize, clockSize, noteTop, noteH, rowH;
     private int perRow = 5;
     private final RectF noteRect = new RectF();
+    private final RectF widgetRect = new RectF();
 
     // All apps (the overlay)
     private boolean allOpen;
@@ -193,6 +194,7 @@ public class HomeView extends View implements Choreographer.FrameCallback {
         noteH = dp(58);
         noteTop = h - (portrait ? dp(132) : dp(104));
         noteRect.set(pad, noteTop, w - pad, noteTop + noteH);
+        widgetRect.set(pad, dp(140), w - pad, dp(140) + dp(140));
         clock.setTextSize(clockSize);
         label.setTextSize(labelSize);
         date.setTextSize(dp(14));
@@ -225,6 +227,11 @@ public class HomeView extends View implements Choreographer.FrameCallback {
     /** Where the note field is: the activity puts the text field exactly there. */
     RectF noteBounds() {
         return noteRect;
+    }
+
+    /** Where the widget goes: the activity puts the widget exactly there. */
+    RectF widgetBounds() {
+        return widgetRect;
     }
 
     // MARK: - Drawing
@@ -286,7 +293,7 @@ public class HomeView extends View implements Choreographer.FrameCallback {
     private void drawFavorites(Canvas c) {
         if (favorites.isEmpty()) return;
         int rows = (int) Math.ceil(favorites.size() / (float) perRow);
-        float top = dp(portrait() ? 150 : 120);
+        float top = widgetRect.bottom + dp(16);
         float bottom = noteTop - dp(24);
         float blockH = rows * rowH;
         float startY = top + Math.max(0, (bottom - top - blockH) / 2f);
@@ -490,7 +497,7 @@ public class HomeView extends View implements Choreographer.FrameCallback {
     private int hitFavorites(float x, float y) {
         if (favorites.isEmpty()) return -1;
         int rows = (int) Math.ceil(favorites.size() / (float) perRow);
-        float top = dp(portrait() ? 150 : 120);
+        float top = widgetRect.bottom + dp(16);
         float bottom = noteTop - dp(24);
         float blockH = rows * rowH;
         float startY = top + Math.max(0, (bottom - top - blockH) / 2f);
