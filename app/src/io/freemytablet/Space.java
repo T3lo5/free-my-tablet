@@ -74,6 +74,7 @@ final class Space {
      */
     static boolean trimCaches(Adb adb) throws IOException {
         String out = adb.shell("pm trim-caches 2G");
+        AppLog.w("the cache of every app was asked to go: " + (out == null ? "(no answer)" : out.trim()));
         return out != null;
     }
 

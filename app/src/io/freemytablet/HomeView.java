@@ -334,6 +334,19 @@ public class HomeView extends View implements Choreographer.FrameCallback {
     /** Called when the person holds the home screen (the settings). */
     public Runnable onLongPress;
 
+    /** Called when the list of all the apps opens or closes (the widget and the note step aside). */
+    public Runnable onOverlayChanged;
+
+    /** Whether the list of all the apps is open. */
+    public boolean isOverlayOpen() {
+        return allOpen;
+    }
+
+    /** The widget and the note step aside while the list of all the apps is open. */
+    private void overlayChanged() {
+        if (onOverlayChanged != null) onOverlayChanged.run();
+    }
+
     /** The quick note: the panel the text field sits on (the field itself is a real EditText, above this). */
     private void drawNote(Canvas c) {
         panel.setColor(0x26FFFFFF);
@@ -478,6 +491,7 @@ public class HomeView extends View implements Choreographer.FrameCallback {
             allScroll = 0;
             invalidate();
             startAnimation();
+            overlayChanged();
             return;
         }
         if (hitSyncButton(x, y)) {
@@ -535,6 +549,7 @@ public class HomeView extends View implements Choreographer.FrameCallback {
         allOpen = false;
         invalidate();
         startAnimation();
+        overlayChanged();
     }
 
     /** Closes the list of all the apps (the back button). */
@@ -543,6 +558,7 @@ public class HomeView extends View implements Choreographer.FrameCallback {
         allOpen = false;
         invalidate();
         startAnimation();
+        overlayChanged();
         return true;
     }
 

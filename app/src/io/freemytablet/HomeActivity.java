@@ -129,6 +129,12 @@ public class HomeActivity extends Activity {
         home.onSyncTap = this::sync;
         // Holding the empty home screen opens the settings (like holding the wallpaper of any launcher).
         home.onLongPress = () -> startActivity(new Intent(this, SettingsActivity.class));
+        // A gaveta de apps é desenhada pelo canvas: o widget e o campo de nota ficariam por cima dela.
+        home.onOverlayChanged = () -> {
+            boolean open = home.isOverlayOpen();
+            if (widgetView != null) widgetView.setVisibility(open ? View.GONE : View.VISIBLE);
+            note.setVisibility(open ? View.GONE : View.VISIBLE);
+        };
     }
 
     /** The sync button: the git pull and the copy, done by Termux (that is where git is). */
