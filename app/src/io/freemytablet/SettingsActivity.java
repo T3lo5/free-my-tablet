@@ -49,8 +49,19 @@ public class SettingsActivity extends Activity {
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == REQ_WIDGET) {
-            // The person picked a widget in the system's picker (or cancelled).
-            int id = data == null ? 0 : data.getIntExtra(android.appwidget.AppWidgetManager.EXTRA_APPWIDGET_ID, 0);
+            // The person picked a widget in the system's picker (or cancelled). The system gives the id in the
+            // data of the answer ("appwidget://13"), not in an extra.
+            int id = 0;
+            if (data != null) {
+                id = data.getIntExtra(android.appwidget.AppWidgetManager.EXTRA_APPWIDGET_ID, 0);
+                if (id == 0 && data.getData() != null && data.getData().getScheme() != null
+                        && data.getData().getScheme().equals("appwidget")) {
+                    try {
+                        id = Integer.parseInt(data.getData().getLastPathSegment());
+                    } catch (NumberFormatException ignored) {
+                    }
+                }
+            }
             if (id != 0) Widgets.picked(this, REQ_WIDGET, id);
             view.reload();
             return;
@@ -468,6 +479,11 @@ public class SettingsActivity extends Activity {
                     lines.add("");
                     lines.add(Ui.tr("Toque em “Atualizar” para baixar e instalar.",
                             "Tap “Update” to download and install."));
+                    lines.add(Ui.tr("Se a instalação ficar parada: o Google Play Protect está conferindo o app. "
+                                    + "Na Play Store, Configurações → Segurança → Verificação de apps, "
+                                    + "escolha “Não verificar”.",
+                            "If the installation hangs, the Google Play Protect is checking the app. In the Play Store, "
+                                    + "Settings → Security → App verification, choose “Don’t verify”."));
                 }
                 activity.runOnUiThread(() -> {
                     updateInfo = info;

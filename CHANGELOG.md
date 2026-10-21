@@ -2,6 +2,13 @@
 
 Everything that changed, newest first.
 
+## v1.7
+
+- **Choosing a widget keeps the slot.** The system gives the id of the widget in the data of the answer
+  ("appwidget://13"), not in an extra, so the new widget was never put in the slot (and the old one stayed
+  there too).
+- The update screen says what to do when the Google Play Protect holds the installation.
+
 ## v1.6
 
 - The path of the downloaded APK is written at once: the installer reads the file right away, and the other

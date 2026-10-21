@@ -27,6 +27,12 @@ final class Widgets {
         AppWidgetHost host = new AppWidgetHost(a, HOST_ID);
         int id = host.allocateAppWidgetId();
         if (id == AppWidgetManager.INVALID_APPWIDGET_ID) return;
+        // The slot holds one widget: the old one goes away.
+        int old = Prefs.widgetId();
+        if (old != 0 && old != id) {
+            host.deleteAppWidgetId(old);
+            Prefs.setWidgetId(0);
+        }
         Intent intent = new Intent(AppWidgetManager.ACTION_APPWIDGET_PICK);
         intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id);
         try {

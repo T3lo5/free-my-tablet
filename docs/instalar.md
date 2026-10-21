@@ -52,6 +52,14 @@ No app **Free My Tablet** (toque e segure a parte vazia da tela inicial, ou o í
 inicial. Para atualizar agora: **Free My Tablet → Atualizações → Atualizar** → o app baixa o APK e abre o
 instalador do sistema (é só confirmar).
 
+Duas coisas acontecem na primeira atualização:
+
+1. O Android pede a permissão de **"instalar apps desconhecidos"** para o Free My Tablet: aceite (é o app
+   baixando o próprio update).
+2. O **Google Play Protect** pode querer conferir o app antes de instalar, e nesse tablet a conferência
+   trava. Para não passar por isso: **Play Store → seu avatar → Configurações → Segurança → Verificação de
+   apps → "Não verificar"**.
+
 ## Se algo der errado
 
 - **O Início não mudou?** Configurações → Apps → Free My Tablet → **Ativar** (de novo).
