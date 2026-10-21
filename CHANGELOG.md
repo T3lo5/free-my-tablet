@@ -2,6 +2,13 @@
 
 Everything that changed, newest first.
 
+## v1.8
+
+- **The panel of the tablet.** In the settings, the new *Tablet* line shows what the tablet is doing right
+  now: the memory (total, in use, free, swap), the battery (level and temperature), how many processes are
+  alive, who is using the processor and who is using the memory. The numbers are the ones the system itself
+  reports — the same ones the developer options show.
+
 ## v1.7
 
 - **Choosing a widget keeps the slot.** The system gives the id of the widget in the data of the answer

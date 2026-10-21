@@ -49,7 +49,7 @@ impossível não vira promessa, e o que não faz sentido para um launcher leve f
 | 5 | **Não dá para buscar dentro do vault** | O app já lê o vault: listar e abrir por busca | médio |
 | 6 | **A tela de Espaço mostra só 8 apps** | Mostrar todos, ordenados, e o que dá para liberar | pequeno |
 | 7 | **O "Espaço" não mostra a memória e a CPU** | Mostrar a memória usada, a da CPU e quem está usando | médio |
-| 8 | **Não tem um painel do tablet** (o que está comendo a bateria) | Um resumo no app: memória, CPU, apps de fundo, notificações | médio |
+| 8 | ~~**Não tem um painel do tablet** (o que está comendo a bateria)~~ | **Feito na v1.8**: a linha *Tablet* mostra memória, bateria, processos, quem usa a CPU e quem usa a memória | — |
 | 9 | **Não dá para exportar as suas escolhas** (apps da tela, dock, pastas) | Salvar/restaurar um arquivo de configuração | pequeno |
 | 10 | **Widgets de outro app que querem configuração própria não abrem** (a tela de configuração do outro app não é exportada) | Abrir a configuração pelo sistema em vez de pelo nosso app | pequeno |
 | 11 | **O diretório de armazenamento quase cheio (14%)** | A tela de Espaço já limpa o cache; falta limpar cache de app em uso (o sistema não deixa) | médio |

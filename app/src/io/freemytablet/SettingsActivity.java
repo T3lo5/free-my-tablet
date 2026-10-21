@@ -145,12 +145,12 @@ public class SettingsActivity extends Activity {
         private long lastFrame;
         private String statusText = "";
 
-        static final int MAIN = 0, FAVORITES = 1, OFF_APPS = 2, SPACE = 3, TALKERS = 4, UPDATES = 5;
+        static final int MAIN = 0, FAVORITES = 1, OFF_APPS = 2, SPACE = 3, TALKERS = 4, UPDATES = 5, PANEL = 6;
 
         /** The lines of the main screen, in the order they are shown. */
         static final int HOME = 0, ON_SCREEN = 1, VAULT = 2, WEATHER = 3, WIDGET = 4, SYNC = 5, SPACE_ROW = 6,
-                TALKERS_ROW = 7, UPDATES_ROW = 8, OFF = 9, LANGUAGE = 10, THEME = 11, ABOUT = 12;
-        static final int[] ROWS = {HOME, ON_SCREEN, VAULT, WEATHER, WIDGET, SYNC, SPACE_ROW, TALKERS_ROW,
+                PANEL_ROW = 7, TALKERS_ROW = 8, UPDATES_ROW = 9, OFF = 10, LANGUAGE = 11, THEME = 12, ABOUT = 13;
+        static final int[] ROWS = {HOME, ON_SCREEN, VAULT, WEATHER, WIDGET, SYNC, SPACE_ROW, PANEL_ROW, TALKERS_ROW,
                 UPDATES_ROW, OFF, LANGUAGE, THEME, ABOUT};
 
         SettingsView(Activity a) {
@@ -223,6 +223,7 @@ public class SettingsActivity extends Activity {
                 case WIDGET: return Ui.tr("Widget", "Widget");
                 case SYNC: return Ui.tr("Sincronizar", "Sync");
                 case SPACE_ROW: return Ui.tr("Espaço", "Space");
+                case PANEL_ROW: return Ui.tr("Tablet", "Tablet");
                 case TALKERS_ROW: return Ui.tr("Quem fala com você", "Who talks to you");
                 case UPDATES_ROW: return Ui.tr("Atualizações", "Updates");
                 case OFF: return Ui.tr("Apps para desligar", "Apps to turn off");
@@ -244,6 +245,7 @@ public class SettingsActivity extends Activity {
                 case WIDGET: return Prefs.widgetId() == 0 ? Ui.tr("Escolher", "Choose") : Ui.tr("Colocado", "Placed");
                 case SYNC: return Ui.tr("Ajustar", "Set up");
                 case SPACE_ROW: return Ui.tr("O que ocupa o tablet", "What is using the tablet");
+                case PANEL_ROW: return Ui.tr("Memória, CPU e bateria", "Memory, CPU and battery");
                 case TALKERS_ROW: return Ui.tr("Notificações", "Notifications");
                 case UPDATES_ROW: return updateState;
                 case OFF: return Ui.tr("Apps que você não usa", "Apps you don't use");
@@ -290,6 +292,8 @@ public class SettingsActivity extends Activity {
                 drawTalkers(c);
             } else if (screen == UPDATES) {
                 drawUpdates(c);
+            } else if (screen == PANEL) {
+                drawPanel(c);
             } else {
                 drawChecklist(c);
             }
@@ -326,6 +330,18 @@ public class SettingsActivity extends Activity {
             c.drawText(Ui.tr("Atualizações", "Updates"), dp(20), dp(44), title);
             float y = top - scroll;
             for (String line : updateLines) {
+                rowTitle.setColor(0xFFFFFFFF);
+                c.drawText(line, dp(20), y + dp(30), rowTitle);
+                y += rowH;
+            }
+        }
+
+        /** The panel. */
+        private void drawPanel(Canvas c) {
+            title.setColor(0xFFFFFFFF);
+            c.drawText(Ui.tr("Tablet", "Tablet"), dp(20), dp(44), title);
+            float y = top - scroll;
+            for (String line : panelLines) {
                 rowTitle.setColor(0xFFFFFFFF);
                 c.drawText(line, dp(20), y + dp(30), rowTitle);
                 y += rowH;
@@ -420,6 +436,7 @@ public class SettingsActivity extends Activity {
             int items;
             if (screen == MAIN) items = rows.size();
             else if (screen == SPACE) items = spaceLines.size();
+            else if (screen == PANEL) items = panelLines.size();
             else if (screen == TALKERS) items = talkerLines.size();
             else if (screen == UPDATES) items = updateLines.size();
             else items = apps.size();
@@ -442,6 +459,7 @@ public class SettingsActivity extends Activity {
                 case WIDGET: askWidget(); break;
                 case SYNC: askSync(); break;
                 case SPACE_ROW: openSpace(); break;
+                case PANEL_ROW: openPanel(); break;
                 case TALKERS_ROW: openTalkers(); break;
                 case UPDATES_ROW: openUpdates(); break;
                 case OFF: openChecklist(OFF_APPS); break;
@@ -528,6 +546,53 @@ public class SettingsActivity extends Activity {
                 });
             }, "download").start();
         }
+
+        /** The panel: the memory, the processor, the battery and the processes. */
+        private void openPanel() {
+            screen = PANEL;
+            scroll = 0;
+            panelLines = new ArrayList<>();
+            panelLines.add(Ui.tr("Lendo…", "Reading…"));
+            invalidate();
+            final Context app = activity.getApplicationContext();
+            new Thread(() -> {
+                List<String> lines = new ArrayList<>();
+                try (Adb adb = Adb.connect(activity, 30_000, null)) {
+                    Panel.Data data = Panel.read(adb);
+                    lines.add(Ui.tr("Memória", "Memory"));
+                    lines.add(Ui.tr("  Total: ", "  Total: ") + data.size(data.ramTotal));
+                    lines.add(Ui.tr("  Em uso: ", "  In use: ") + data.size(data.ramUsed));
+                    lines.add(Ui.tr("  Livre: ", "  Free: ") + data.size(data.ramFree));
+                    lines.add(Ui.tr("  Swap: ", "  Swap: ") + data.size(data.swapUsed));
+                    lines.add("");
+                    lines.add(Ui.tr("Bateria", "Battery"));
+                    lines.add("  " + data.battery + "%   " + data.temperature + "°C");
+                    lines.add("");
+                    lines.add(Ui.tr("Processos vivos: ", "Processes alive: ") + data.processes);
+                    lines.add("");
+                    lines.add(Ui.tr("Os que mais usam a CPU", "The ones using the CPU"));
+                    for (Panel.Entry entry : data.cpu) {
+                        if (lines.size() > 40) break;
+                        lines.add("  " + entry.name + "   " + entry.percent + "%");
+                    }
+                    lines.add("");
+                    lines.add(Ui.tr("Os que mais usam a memória", "The ones using the memory"));
+                    for (Panel.Entry entry : data.memory) {
+                        if (lines.size() > 55) break;
+                        lines.add("  " + entry.name + "   " + data.size(entry.size));
+                    }
+                } catch (Exception e) {
+                    lines.add(Ui.tr("Não consegui ler: o ADB do tablet não está aberto.",
+                            "I couldn't read: the tablet's ADB is not open."));
+                }
+                activity.runOnUiThread(() -> {
+                    panelLines = lines;
+                    invalidate();
+                });
+            }, "panel").start();
+        }
+
+        private List<String> panelLines = new ArrayList<>();
 
         /** Who talks the most: the notifications the tablet received, with a way to turn each one off. */
         private void openTalkers() {
