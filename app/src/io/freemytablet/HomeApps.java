@@ -164,6 +164,7 @@ final class HomeApps {
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
         try {
             a.startActivity(intent);
+            Prefs.addRecent(item.pkg);   // the apps opened lately
             return true;
         } catch (RuntimeException e) {
             AppLog.w("could not open " + item.pkg + ": " + e.getMessage());

@@ -2,6 +2,17 @@
 
 Everything that changed, newest first.
 
+## v1.9
+
+- **The list of all the apps has a search.** The field on top of the list filters as you type.
+- **The apps opened lately** have their own row on top of that list.
+- **The quick note can have its own folder** in the vault (the folder is made if it does not exist).
+- **The notes of the vault can be searched** (by name), and a tap opens the note in Obsidian.
+- **The choices can be saved and read back**, so they can be copied to another tablet: the file goes into the vault.
+- **The "light" theme is now warm paper**, for reading (the "automatic" one still follows the sun).
+- The paths of the notes were wrong when the vault had folders inside folders: the app asked for the id of
+  the tree in a document, and got a strange answer.
+
 ## v1.8
 
 - **The panel of the tablet.** In the settings, the new *Tablet* line shows what the tablet is doing right

@@ -42,15 +42,16 @@ impossível não vira promessa, e o que não faz sentido para um launcher leve f
 
 | # | O problema | Como resolver | Esforço |
 |---|---|---|---|
-| 1 | **A gaveta de apps é uma lista só** — achar um app amongst 30 é rolagem | Busca por nome (o sistema já sabe filtrar) | pequeno |
-| 2 | **Não tem "usados recentemente"** — o que você abriu ontem some | O app guarda os que abriu + pedir o "acesso ao uso" para os do sistema | médio |
+| 1 | ~~**A gaveta de apps é uma lista só** — achar um app amongst 30 é rolagem~~ | **Feito na v1.9**: a busca no topo da lista filtra enquanto se digita | — |
+| 2 | ~~**Não tem "usados recentemente"** — o que você abriu ontem some~~ | **Feito na v1.9** (os abertos pelo launcher): uma fileira no topo da gaveta | — |
 | 3 | **O widget não pode ser redimensionado** | O host do widget pede o resize quando a pessoa arrasta | pequeno |
-| 4 | **A nota vai sempre para a raiz do vault**, com o mesmo nome do dia | Escolher a pasta (ex.: `01 - Diário`) e o nome | pequeno |
-| 5 | **Não dá para buscar dentro do vault** | O app já lê o vault: listar e abrir por busca | médio |
+| 3b | **A nota vai sempre para a raiz do vault** | **Feito na v1.9**: a pasta da nota é escolhida (e criada se não existir) | — |
+| 4 | ~~**A nota vai sempre para a raiz do vault**~~ | **Feito na v1.9** (a pasta da nota) | — |
+| 5 | ~~**Não dá para buscar dentro do vault**~~ | **Feito na v1.9**: a busca acha a nota e abre no Obsidian | — |
 | 6 | **A tela de Espaço mostra só 8 apps** | Mostrar todos, ordenados, e o que dá para liberar | pequeno |
 | 7 | **O "Espaço" não mostra a memória e a CPU** | Mostrar a memória usada, a da CPU e quem está usando | médio |
 | 8 | ~~**Não tem um painel do tablet** (o que está comendo a bateria)~~ | **Feito na v1.8**: a linha *Tablet* mostra memória, bateria, processos, quem usa a CPU e quem usa a memória | — |
-| 9 | **Não dá para exportar as suas escolhas** (apps da tela, dock, pastas) | Salvar/restaurar um arquivo de configuração | pequeno |
+| 9 | ~~**Não dá para exportar as suas escolhas** (apps da tela, dock, pastas)~~ | **Feito na v1.9**: salvar (e ler de volta) no vault | — |
 | 10 | **Widgets de outro app que querem configuração própria não abrem** (a tela de configuração do outro app não é exportada) | Abrir a configuração pelo sistema em vez de pelo nosso app | pequeno |
 | 11 | **O diretório de armazenamento quase cheio (14%)** | A tela de Espaço já limpa o cache; falta limpar cache de app em uso (o sistema não deixa) | médio |
 | 12 | **Não tem um "modo leitura"** (a tela escura, só o essencial, para ler de madrugada) | Um tema noturno total, com o relógio pequeno | pequeno |

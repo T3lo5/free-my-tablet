@@ -148,10 +148,11 @@ public class SettingsActivity extends Activity {
         static final int MAIN = 0, FAVORITES = 1, OFF_APPS = 2, SPACE = 3, TALKERS = 4, UPDATES = 5, PANEL = 6;
 
         /** The lines of the main screen, in the order they are shown. */
-        static final int HOME = 0, ON_SCREEN = 1, VAULT = 2, WEATHER = 3, WIDGET = 4, SYNC = 5, SPACE_ROW = 6,
-                PANEL_ROW = 7, TALKERS_ROW = 8, UPDATES_ROW = 9, OFF = 10, LANGUAGE = 11, THEME = 12, ABOUT = 13;
-        static final int[] ROWS = {HOME, ON_SCREEN, VAULT, WEATHER, WIDGET, SYNC, SPACE_ROW, PANEL_ROW, TALKERS_ROW,
-                UPDATES_ROW, OFF, LANGUAGE, THEME, ABOUT};
+        static final int HOME = 0, ON_SCREEN = 1, VAULT = 2, NOTE_FOLDER = 3, VAULT_SEARCH = 4, WEATHER = 5,
+                WIDGET = 6, SYNC = 7, SPACE_ROW = 8, PANEL_ROW = 9, TALKERS_ROW = 10, UPDATES_ROW = 11,
+                EXPORT = 12, OFF = 13, LANGUAGE = 14, THEME = 15, ABOUT = 16;
+        static final int[] ROWS = {HOME, ON_SCREEN, VAULT, NOTE_FOLDER, VAULT_SEARCH, WEATHER, WIDGET, SYNC, SPACE_ROW,
+                PANEL_ROW, TALKERS_ROW, UPDATES_ROW, EXPORT, OFF, LANGUAGE, THEME, ABOUT};
 
         SettingsView(Activity a) {
             super(a);
@@ -219,6 +220,9 @@ public class SettingsActivity extends Activity {
                 case HOME: return Ui.tr("Tela de Início", "Home screen");
                 case ON_SCREEN: return Ui.tr("Apps na tela", "Apps on the home screen");
                 case VAULT: return Ui.tr("Pasta do Obsidian", "Obsidian folder");
+                case NOTE_FOLDER: return Prefs.noteFolder().isEmpty() ? Ui.tr("A raiz do vault", "The vault root")
+                        : Prefs.noteFolder();
+                case VAULT_SEARCH: return Ui.tr("Procurar uma nota", "Find a note");
                 case WEATHER: return Ui.tr("Card do tempo", "Weather card");
                 case WIDGET: return Ui.tr("Widget", "Widget");
                 case SYNC: return Ui.tr("Sincronizar", "Sync");
@@ -226,6 +230,7 @@ public class SettingsActivity extends Activity {
                 case PANEL_ROW: return Ui.tr("Tablet", "Tablet");
                 case TALKERS_ROW: return Ui.tr("Quem fala com você", "Who talks to you");
                 case UPDATES_ROW: return Ui.tr("Atualizações", "Updates");
+                case EXPORT: return Ui.tr("Exportar as escolhas", "Export the choices");
                 case OFF: return Ui.tr("Apps para desligar", "Apps to turn off");
                 case LANGUAGE: return Ui.tr("Idioma", "Language");
                 case THEME: return Ui.tr("Tema", "Theme");
@@ -241,11 +246,15 @@ public class SettingsActivity extends Activity {
                         : Ui.tr("Original", "Original");
                 case ON_SCREEN: return Ui.tr("Escolher", "Choose");
                 case VAULT: return Vault.ready(activity) ? Ui.tr("Escolhida", "Chosen") : Ui.tr("Escolher", "Choose");
+                case NOTE_FOLDER: return Prefs.noteFolder().isEmpty() ? Ui.tr("A raiz do vault", "The vault root")
+                        : Prefs.noteFolder();
+                case VAULT_SEARCH: return Ui.tr("Procurar uma nota", "Find a note");
                 case WEATHER: return Prefs.weatherCard() ? Ui.tr("Ligado", "On") : Ui.tr("Desligado", "Off");
                 case WIDGET: return Prefs.widgetId() == 0 ? Ui.tr("Escolher", "Choose") : Ui.tr("Colocado", "Placed");
                 case SYNC: return Ui.tr("Ajustar", "Set up");
                 case SPACE_ROW: return Ui.tr("O que ocupa o tablet", "What is using the tablet");
                 case PANEL_ROW: return Ui.tr("Memória, CPU e bateria", "Memory, CPU and battery");
+                case EXPORT: return Ui.tr("Salvar ou restaurar", "Save or restore");
                 case TALKERS_ROW: return Ui.tr("Notificações", "Notifications");
                 case UPDATES_ROW: return updateState;
                 case OFF: return Ui.tr("Apps que você não usa", "Apps you don't use");
@@ -452,6 +461,9 @@ public class SettingsActivity extends Activity {
                 case HOME: askSwitch(); break;
                 case ON_SCREEN: openChecklist(FAVORITES); break;
                 case VAULT: Vault.pick(activity); break;
+                case NOTE_FOLDER: askNoteFolder(); break;
+                case VAULT_SEARCH: VaultSearch.show(activity); break;
+                case EXPORT: askExport(); break;
                 case WEATHER:
                     Prefs.setWeatherCard(!Prefs.weatherCard());
                     reload();
@@ -707,6 +719,69 @@ public class SettingsActivity extends Activity {
                     notice(text);
                 });
             }, "space-clean").start();
+        }
+
+        /** The folder inside the vault where the quick note goes. */
+        private void askNoteFolder() {
+            final android.widget.EditText field = new android.widget.EditText(activity);
+            field.setText(Prefs.noteFolder());
+            field.setHint(Ui.tr("Ex.: 01 - Diário (vazio = a raiz)", "e.g. 01 - Diary (empty = the root)"));
+            field.setSingleLine();
+            int pad = Math.round(dp(20));
+            field.setPadding(pad, Math.round(dp(12)), pad, 0);
+            new AlertDialog.Builder(activity)
+                    .setTitle(Ui.tr("Pasta da nota", "Note folder"))
+                    .setView(field)
+                    .setNegativeButton(Ui.tr("Cancelar", "Cancel"), null)
+                    .setPositiveButton("OK", (d, w) -> {
+                        Prefs.setNoteFolder(field.getText().toString());
+                        reload();
+                    })
+                    .show();
+        }
+
+        /** The choices: save them in the vault, or read them back from there. */
+        private void askExport() {
+            new AlertDialog.Builder(activity)
+                    .setTitle(Ui.tr("Exportar as escolhas", "Export the choices"))
+                    .setItems(new String[] {
+                            Ui.tr("Salvar no vault", "Save in the vault"),
+                            Ui.tr("Ler do vault (restaurar)", "Read from the vault (restore)")},
+                            (d, which) -> {
+                                if (which == 0) exportChoices();
+                                else restoreChoices();
+                            })
+                    .setNegativeButton(Ui.tr("Cancelar", "Cancel"), null)
+                    .show();
+        }
+
+        /** Reads the choices back from the vault. */
+        private void restoreChoices() {
+            new Thread(() -> {
+                boolean ok = Backup.restore(activity);
+                final String text = ok
+                        ? Ui.tr("Escolhas restauradas.", "The choices were restored.")
+                        : Ui.tr("Não achei o arquivo de escolhas no vault.", "No choices file in the vault.");
+                activity.runOnUiThread(() -> {
+                    notice(text);
+                    reload();
+                });
+            }, "restore").start();
+        }
+
+        /** Writes the choices in the vault, so they can be copied to another tablet. */
+        private void exportChoices() {
+            new Thread(() -> {
+                String name = Backup.save(activity);
+                final String text = name == null
+                        ? Ui.tr("Escolha a pasta do Obsidian primeiro (e uma pasta que aceite arquivo novo).",
+                        "Choose the Obsidian folder first (and one that accepts new files).")
+                        : Ui.tr("Escolhas salvas em ", "The choices were saved in ") + name;
+                activity.runOnUiThread(() -> {
+                    notice(text);
+                    reload();
+                });
+            }, "export").start();
         }
 
         /** The widget: the system's own picker (with the previews), or taking the one that is there off. */

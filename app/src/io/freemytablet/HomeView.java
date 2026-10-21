@@ -54,6 +54,7 @@ public class HomeView extends View implements Choreographer.FrameCallback {
     private int perRow = 5;
     private final RectF noteRect = new RectF();
     private final RectF widgetRect = new RectF();
+    private final RectF searchRect = new RectF();
 
     // All apps (the overlay)
     private boolean allOpen;
@@ -207,7 +208,7 @@ public class HomeView extends View implements Choreographer.FrameCallback {
         if (w <= 0 || h <= 0) return;   // the view has no size yet (right after the app starts)
         String theme = Prefs.theme();
         if ("light".equals(theme)) {
-            Sky.light(palette);
+            Sky.paper(palette);   // warm paper, for reading
         } else if ("dark".equals(theme)) {
             Sky.dark(palette);
         } else {
@@ -337,6 +338,9 @@ public class HomeView extends View implements Choreographer.FrameCallback {
     /** Called when the list of all the apps opens or closes (the widget and the note step aside). */
     public Runnable onOverlayChanged;
 
+    /** Called when the person taps the search box of the list. */
+    public Runnable onSearchTap;
+
     /** Whether the list of all the apps is open. */
     public boolean isOverlayOpen() {
         return allOpen;
@@ -389,13 +393,40 @@ public class HomeView extends View implements Choreographer.FrameCallback {
     private void drawAll(Canvas c) {
         panel.setColor(0xFF0B0F1E);
         c.drawRect(0, 0, w, h, panel);
-        hint.setColor(0xCCFFFFFF);
-        c.drawText(Ui.tr("Todos os apps", "All apps"), dp(24), dp(46), hint);
-        float top = dp(68), bottom = h - dp(24);
+        searchRect.set(dp(20), dp(16), w - dp(20), dp(16) + dp(44));
+        panel.setColor(0x22FFFFFF);
+        c.drawRoundRect(searchRect, dp(22), dp(22), panel);
+        Bitmap glass = Symbols.get(context, "search");
+        if (glass != null) {
+            float s = dp(20);
+            iconRect.set(searchRect.left + dp(12), searchRect.centerY() - s / 2,
+                    searchRect.left + dp(12) + s, searchRect.centerY() + s / 2);
+            symbolPaint.setColorFilter(new android.graphics.PorterDuffColorFilter(0x99FFFFFF,
+                    android.graphics.PorterDuff.Mode.SRC_IN));
+            c.drawBitmap(glass, null, iconRect, symbolPaint);
+        }
+        hint.setColor(0x99FFFFFF);
+        c.drawText(filter.isEmpty() ? Ui.tr("Buscar app", "Search an app") : filter,
+                searchRect.left + dp(42), searchRect.centerY() + dp(5), hint);
+        float top = dp(74), bottom = h - dp(24);
+        // The apps opened lately, in a row on top.
+        List<HomeApps.Item> recents = recentItems();
+        float recentH = 0;
+        if (!recents.isEmpty() && filter.isEmpty()) {
+            recentH = iconSize + dp(26);
+            hint.setColor(0x99FFFFFF);
+            c.drawText(Ui.tr("Recentes", "Recent"), dp(20), top + dp(14), hint);
+            float slot = (w - dp(40)) / Math.min(5, recents.size());
+            for (int i = 0; i < Math.min(5, recents.size()); i++) {
+                float cx = dp(20) + slot * i + slot / 2;
+                drawIcon(c, recents.get(i), cx, top + dp(30) + iconSize / 2, false);
+            }
+            top += recentH;
+        }
         float cell = Math.max(dp(72), iconSize + dp(34));
         int cols = Math.max(3, (int) ((w - dp(40)) / cell));
         float cellW = (w - dp(40)) / cols;
-        List<HomeApps.Item> all = allApps;
+        List<HomeApps.Item> all = filter.isEmpty() ? allApps : filtered;
         int rows = (int) Math.ceil((double) all.size() / cols);
         float contentH = rows * cell;
         allMaxScroll = Math.max(0, contentH - (bottom - top));
@@ -415,6 +446,42 @@ public class HomeView extends View implements Choreographer.FrameCallback {
     }
 
     private List<HomeApps.Item> allApps = new ArrayList<>();
+    private final List<HomeApps.Item> filtered = new ArrayList<>();
+    private String filter = "";
+
+    /** The text typed in the search box: it filters the list of all the apps. */
+    public void setFilter(String text) {
+        filter = text == null ? "" : text.trim().toLowerCase(java.util.Locale.getDefault());
+        filtered.clear();
+        for (HomeApps.Item item : allApps) {
+            if (filter.isEmpty() || item.label.toLowerCase(java.util.Locale.getDefault()).contains(filter)) filtered.add(item);
+        }
+        invalidate();
+    }
+
+    /** The apps opened lately (the ones that are still installed). */
+    private List<HomeApps.Item> recentItems() {
+        List<HomeApps.Item> out = new ArrayList<>();
+        for (String pkg : Prefs.recent()) {
+            for (HomeApps.Item item : allApps) {
+                if (item.pkg.equals(pkg)) {
+                    out.add(item);
+                    break;
+                }
+            }
+        }
+        return out;
+    }
+
+    /** Whether the list is being filtered. */
+    public boolean isFiltering() {
+        return !filter.isEmpty();
+    }
+
+    /** Where the search box is (the activity puts the text field exactly there). */
+    RectF searchBounds() {
+        return searchRect;
+    }
 
     /** The list of every app (the overlay needs it; it is loaded with the favorites). */
     public void setAllApps(List<HomeApps.Item> all) {
@@ -534,7 +601,11 @@ public class HomeView extends View implements Choreographer.FrameCallback {
 
     /** A tap in the list of all the apps. */
     private void tapAll(float x, float y) {
-        float top = dp(68), bottom = h - dp(24);
+        if (searchRect.contains(x, y)) {
+            if (onSearchTap != null) onSearchTap.run();
+            return;
+        }
+        float top = dp(74), bottom = h - dp(24);
         if (y < top || y > bottom) { allOpen = false; invalidate(); return; }
         float cell = Math.max(dp(72), iconSize + dp(34));
         int cols = Math.max(3, (int) ((w - dp(40)) / cell));

@@ -62,6 +62,13 @@ final class Vault {
             ContentResolver resolver = c.getContentResolver();
             String today = new SimpleDateFormat("yyyy-MM-dd", Locale.US).format(new Date());
             String name = Ui.tr("Nota rápida ", "Quick note ") + today + ".md";
+            // The folder of the note (inside the vault), made when it does not exist yet.
+            String sub = Prefs.noteFolder();
+            if (!sub.isEmpty()) {
+                Uri subFolder = subFolder(resolver, folder, sub);
+                if (subFolder == null) return null;
+                folder = subFolder;
+            }
             Uri file = find(resolver, folder, name);
             boolean fresh = file == null;
             if (fresh) {
@@ -81,6 +88,23 @@ final class Vault {
             AppLog.w("could not save the note: " + e);
             return null;
         }
+    }
+
+    /** A folder inside the vault (made when it does not exist), or null. */
+    private static Uri subFolder(ContentResolver resolver, Uri vault, String path) throws IOException {
+        Uri current = vault;
+        for (String part : path.split("/")) {
+            part = part.trim();
+            if (part.isEmpty()) continue;
+            Uri child = find(resolver, current, part);
+            if (child == null) {
+                child = DocumentsContract.createDocument(resolver, current,
+                        DocumentsContract.Document.MIME_TYPE_DIR, part);
+                if (child == null) return null;
+            }
+            current = child;
+        }
+        return current;
     }
 
     /** The document with that name inside the folder, or null. */
@@ -212,7 +236,7 @@ final class Vault {
             String id = DocumentsContract.getTreeDocumentId(folder);
             int slash = id.lastIndexOf('/');
             String vault = slash < 0 ? id : id.substring(slash + 1);
-            walk(c.getContentResolver(), folder, "", vault, out, 0);
+            walk(c.getContentResolver(), folder, folder, "", vault, out, 0);
         } catch (Exception e) {
             AppLog.w("could not read the notes: " + e.getMessage());
         }
@@ -225,10 +249,12 @@ final class Vault {
     }
 
     /** Looks through a folder and the ones inside it (up to three levels, sixty notes). */
-    private static void walk(ContentResolver resolver, Uri folder, String prefix, String vault, List<Note> out, int depth) {
+    private static void walk(ContentResolver resolver, Uri tree, Uri folder, String prefix, String vault,
+            List<Note> out, int depth) {
         try {
-            Uri children = DocumentsContract.buildChildDocumentsUriUsingTree(folder,
-                    DocumentsContract.getTreeDocumentId(folder));
+            // The children of a folder: the tree (the one the person gave) and the id of the folder.
+            Uri children = DocumentsContract.buildChildDocumentsUriUsingTree(tree,
+                    DocumentsContract.getDocumentId(folder));
             try (android.database.Cursor cursor = resolver.query(children,
                     new String[] {DocumentsContract.Document.COLUMN_DOCUMENT_ID,
                             DocumentsContract.Document.COLUMN_DISPLAY_NAME,
@@ -241,7 +267,7 @@ final class Vault {
                     if (name == null || name.startsWith(".")) continue;
                     if (DocumentsContract.Document.MIME_TYPE_DIR.equals(mime)) {
                         if (depth < 3) {
-                            walk(resolver, DocumentsContract.buildDocumentUriUsingTree(folder, cursor.getString(0)),
+                            walk(resolver, tree, DocumentsContract.buildDocumentUriUsingTree(tree, cursor.getString(0)),
                                     prefix + name + "/", vault, out, depth + 1);
                         }
                     } else if (name.endsWith(".md")) {

@@ -72,9 +72,14 @@ final class Sky {
         }
     }
 
-    /** The day palette, whatever the hour (the "light" theme). */
+    /** The day palette, whatever the hour (the "automatic" theme). */
     static void light(Palette out) {
         out.set(DAY[0], DAY[1], DAY[2]);
+    }
+
+    /** The "light" theme of the settings: warm paper, for reading. */
+    static void paper(Palette out) {
+        out.set(0xE8E2D6, 0xF3EEE4, 0xFFFBF2);
     }
 
     /** The night palette, whatever the hour (the "dark" theme). */

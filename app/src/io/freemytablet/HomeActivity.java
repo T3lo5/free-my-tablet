@@ -42,6 +42,7 @@ public class HomeActivity extends Activity {
 
     private HomeView home;
     private EditText note;
+    private EditText search;
     private AppWidgetHost host;          // the widget in the slot
     private AppWidgetHostView widgetView;
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -76,6 +77,14 @@ public class HomeActivity extends Activity {
                 widgetView.measure(View.MeasureSpec.makeMeasureSpec(wr - wl, View.MeasureSpec.EXACTLY),
                         View.MeasureSpec.makeMeasureSpec(wb - wt, View.MeasureSpec.EXACTLY));
                 widgetView.layout(wl, wt, wr, wb);
+            }
+            if (search.getVisibility() == View.VISIBLE) {
+                RectF area = home.searchBounds();
+                int sl = Math.round(area.left), st = Math.round(area.top);
+                int sr = Math.round(area.right), sb = Math.round(area.bottom);
+                search.measure(View.MeasureSpec.makeMeasureSpec(sr - sl, View.MeasureSpec.EXACTLY),
+                        View.MeasureSpec.makeMeasureSpec(sb - st, View.MeasureSpec.EXACTLY));
+                search.layout(sl, st, sr, sb);
             }
         }
     }
@@ -116,12 +125,16 @@ public class HomeActivity extends Activity {
         home = new HomeView(this);
         note = new EditText(this);
         styleNote();
+        search = new EditText(this);
+        styleSearch();
         host = new AppWidgetHost(this, Widgets.HOST_ID);
         host.startListening();
         root = new Root(this);
         root.addView(home, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT));
         root.addView(note, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT));
+        root.addView(search, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT));
         setContentView(root);
         getWindow().setBackgroundDrawable(null);
@@ -134,7 +147,9 @@ public class HomeActivity extends Activity {
             boolean open = home.isOverlayOpen();
             if (widgetView != null) widgetView.setVisibility(open ? View.GONE : View.VISIBLE);
             note.setVisibility(open ? View.GONE : View.VISIBLE);
+            if (!open) hideSearch();
         };
+        home.onSearchTap = this::showSearch;
     }
 
     /** The sync button: the git pull and the copy, done by Termux (that is where git is). */
@@ -181,6 +196,45 @@ public class HomeActivity extends Activity {
             home.notice(Ui.tr("Sem a permissão do Termux a sincronização não roda.",
                     "Without Termux's permission the sync cannot run."));
         }
+    }
+
+    /** The search field of the list of all the apps. */
+    private void styleSearch() {
+        search.setBackgroundColor(Color.TRANSPARENT);
+        search.setTextColor(Color.WHITE);
+        search.setHintTextColor(0x99FFFFFF);
+        search.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+        search.setTypeface(Ui.regular);
+        search.setSingleLine(true);
+        search.setPadding(dp(42), 0, dp(12), 0);
+        search.setGravity(Gravity.CENTER_VERTICAL);
+        search.setImeOptions(EditorInfo.IME_ACTION_SEARCH | EditorInfo.IME_FLAG_NO_EXTRACT_UI);
+        search.setVisibility(View.GONE);
+        search.addTextChangedListener(new android.text.TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int a, int b, int c) {}
+            @Override public void onTextChanged(CharSequence s, int a, int b, int c) {
+                if (home != null) home.setFilter(s.toString());
+            }
+            @Override public void afterTextChanged(android.text.Editable s) {}
+        });
+    }
+
+    /** The person tapped the search box of the list: the field appears and the keyboard comes up. */
+    private void showSearch() {
+        search.setVisibility(View.VISIBLE);
+        search.setText("");
+        search.requestFocus();
+        InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+        if (imm != null) imm.showSoftInput(search, InputMethodManager.SHOW_IMPLICIT);
+        root.requestLayout();
+    }
+
+    /** The search is over: the field goes away and the list shows everything again. */
+    private void hideSearch() {
+        search.setVisibility(View.GONE);
+        search.setText("");
+        if (home != null) home.setFilter("");
+        hideKeyboard(search);
     }
 
     /** The quick note field: white text on the panel, one line, the system's keyboard. */
@@ -268,8 +322,12 @@ public class HomeActivity extends Activity {
 
     private void hideKeyboard() {
         note.clearFocus();
+        hideKeyboard(note);
+    }
+
+    private void hideKeyboard(View field) {
         InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-        if (imm != null) imm.hideSoftInputFromWindow(note.getWindowToken(), 0);
+        if (imm != null) imm.hideSoftInputFromWindow(field.getWindowToken(), 0);
     }
 
     @Override protected void onResume() {
@@ -355,6 +413,13 @@ public class HomeActivity extends Activity {
     }
 
     @Override public boolean dispatchKeyEvent(KeyEvent event) {
+        if (search != null && search.hasFocus()) {
+            if (event.getKeyCode() == KeyEvent.KEYCODE_BACK) {
+                hideSearch();
+                return true;
+            }
+            return super.dispatchKeyEvent(event);
+        }
         if (note != null && note.hasFocus()) return super.dispatchKeyEvent(event);
         if (home != null && home.onKeyDown(event.getKeyCode(), event)) return true;
         return super.dispatchKeyEvent(event);

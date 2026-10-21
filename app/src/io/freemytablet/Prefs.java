@@ -138,6 +138,33 @@ final class Prefs {
         put("optionalOff", sb.toString());
     }
 
+    // MARK: - The apps opened lately
+
+    /** The apps opened through the launcher, the latest first. */
+    static List<String> recent() {
+        List<String> out = new ArrayList<>();
+        String v = sp().getString("recent", "");
+        for (String pkg : v.split(",")) if (!pkg.isEmpty()) out.add(pkg);
+        return out;
+    }
+
+    static void addRecent(String pkg) {
+        if (pkg == null || pkg.isEmpty()) return;
+        List<String> list = recent();
+        list.remove(pkg);
+        list.add(0, pkg);
+        while (list.size() > 8) list.remove(list.size() - 1);
+        StringBuilder sb = new StringBuilder();
+        for (String p : list) sb.append(sb.length() == 0 ? "" : ",").append(p);
+        put("recent", sb.toString());
+    }
+
+    // MARK: - The quick note
+
+    /** The folder inside the vault where the note goes ("" = the root of the vault). */
+    static String noteFolder() { return sp().getString("noteFolder", ""); }
+    static void setNoteFolder(String folder) { put("noteFolder", folder.trim()); }
+
     // MARK: - The updates
 
     /** When the app last looked for a new version (the API is not called again for a while). */
