@@ -53,6 +53,7 @@ public class SettingsActivity extends Activity {
             // data of the answer ("appwidget://13"), not in an extra.
             int id = 0;
             if (data != null) {
+                // The id comes in the extra, or in the data ("appwidget://13") — depending on the system.
                 id = data.getIntExtra(android.appwidget.AppWidgetManager.EXTRA_APPWIDGET_ID, 0);
                 if (id == 0 && data.getData() != null && data.getData().getScheme() != null
                         && data.getData().getScheme().equals("appwidget")) {
@@ -62,8 +63,11 @@ public class SettingsActivity extends Activity {
                     }
                 }
             }
+            int extra = data == null ? 0
+                    : data.getIntExtra(android.appwidget.AppWidgetManager.EXTRA_APPWIDGET_ID, 0);
             AppLog.w("the picker answered: result=" + resultCode + " data=" + (data == null ? "none" : data.getData())
-                    + " extra=" + (data == null ? "none" : data.getIntExtra(android.appwidget.AppWidgetManager.EXTRA_APPWIDGET_ID, 0)));
+                    + " extra=" + extra);
+            if (id == 0) id = extra;   // some systems answer with the id in the extra only
             if (id != 0) Widgets.picked(this, REQ_WIDGET, id);
             view.reload();
             return;

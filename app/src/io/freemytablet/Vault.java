@@ -303,7 +303,9 @@ final class Vault {
 
     /** The notes of the last walk (the same list, when it is still fresh). */
     static List<Note> cached() {
-        if (cache == null || System.currentTimeMillis() - cacheAt > 120000) return null;
+        // Ten minutes: the walk through the vault is slow (the system asks about every folder) and the
+        // widget asks for the notes every time the home screen is opened.
+        if (cache == null || System.currentTimeMillis() - cacheAt > 600000) return null;
         return new ArrayList<>(cache);
     }
 
