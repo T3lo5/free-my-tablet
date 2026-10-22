@@ -98,7 +98,6 @@ final class HomeMode {
         "com.samsung.android.app.shealth",             // Samsung Health
         "com.google.android.tts",                      // the text-to-speech engine (560 MB here)
         "com.google.android.apps.maps",                // Google Maps (preinstalled)
-        "com.google.android.apps.docs",                // Google Drive
         "com.sec.android.daemonapp",                   // Samsung Weather
         "com.samsung.android.app.arzone",              // AR Zone
         "com.samsung.android.aremoji",                 // AR Emoji
