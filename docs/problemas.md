@@ -40,6 +40,9 @@ impossível não vira promessa, e o que não faz sentido para um launcher leve f
 | 25 | **A busca no vault travava a tela** (a varredura das pastas é lenta) | A busca abre na hora e as notas aparecem enquanto são achadas | Testado |
 | 26 | **O aviso da tela de Início voltava toda vez** | Ele é mostrado uma vez | Corrigido |
 | 27 | **O tema claro era um céu azul com texto branco** | O tema claro é papel quente, com a tinta escura em cima | Testado |
+| 28 | **O widget ficava carregando para sempre** (o app não contava o tamanho do slot ao sistema: o widget recebia 0×0) | O app manda o tamanho do slot; o widget que o Obsidian traz é da Glance (Android 12+) e não funciona aqui — o nosso lê o vault pelo SAF | Testado |
+| 29 | **O widget escolhido no seletor não era adotado** (o id vinha no extra da resposta, o app só olhava o data) | O id é lido dos dois jeitos; o slot ficou com um widget só | Corrigido |
+| 30 | **"Abrir a nota de hoje" morava nas configurações** | Agora é um botão na tela de início (o arquivo é criado antes, senão o Obsidian abre outra nota) | Testado |
 
 ---
 
