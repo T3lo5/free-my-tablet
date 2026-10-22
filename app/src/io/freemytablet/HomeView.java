@@ -63,6 +63,9 @@ public class HomeView extends View implements Choreographer.FrameCallback {
 
     /** The height the widget asked for (0 = the one from the settings). */
     private int widgetHeight;
+
+    /** The height we told the widget (so we can tell our own echo from a real request). */
+    private int widgetTold;
     private final RectF searchRect = new RectF();
 
     // All apps (the overlay)
@@ -264,6 +267,7 @@ public class HomeView extends View implements Choreographer.FrameCallback {
 
     /** The widget asked for another height (the person resized it in the system). */
     public void setWidgetHeight(int dp) {
+        if (dp == widgetTold) return;   // it is repeating what we told it: not a new request
         if (dp == widgetHeight) return;
         widgetHeight = dp;
         layoutWidget();
@@ -276,6 +280,7 @@ public class HomeView extends View implements Choreographer.FrameCallback {
         // The size the person chose, or the one the widget asks for when it is bigger (the widget is not cut).
         int wh = Math.max(Prefs.widgetSize(), widgetHeight);
         widgetRect.set(pad, dp(140), w - pad, dp(140) + dp(wh));
+        widgetTold = wh;
     }
 
     // MARK: - Drawing

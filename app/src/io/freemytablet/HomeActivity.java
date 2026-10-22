@@ -451,13 +451,8 @@ public class HomeActivity extends Activity {
             Prefs.setWidgetId(0);
             return;
         }
-        // The size the widget asks for (the slot never squeezes it).
-        try {
-            Bundle options = AppWidgetManager.getInstance(this).getAppWidgetOptions(id);
-            int wanted = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 0);
-            if (wanted > 0 && home != null) home.setWidgetHeight(wanted);
-        } catch (RuntimeException ignored) {
-        }
+        // The size of the slot is the one the person chose (the widget asks for nothing on its own:
+        // what it answers is what we told it).
         if (widgetView == null) {
             widgetView = host.createView(this, id, info);
             widgetView.setAppWidget(id, info);
