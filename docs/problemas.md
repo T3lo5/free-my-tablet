@@ -43,6 +43,8 @@ impossível não vira promessa, e o que não faz sentido para um launcher leve f
 | 28 | **O widget ficava carregando para sempre** (o app não contava o tamanho do slot ao sistema: o widget recebia 0×0) | O app manda o tamanho do slot; o widget que o Obsidian traz é da Glance (Android 12+) e não funciona aqui — o nosso lê o vault pelo SAF | Testado |
 | 29 | **O widget escolhido no seletor não era adotado** (o id vinha no extra da resposta, o app só olhava o data) | O id é lido dos dois jeitos; o slot ficou com um widget só | Corrigido |
 | 30 | **"Abrir a nota de hoje" morava nas configurações** | Agora é um botão na tela de início (o arquivo é criado antes, senão o Obsidian abre outra nota) | Testado |
+| 31 | **Não dava para ver o ganho do app** | A tela "O que o Free My Tablet ganhou": o tablet agora e o Início do tablet lado a lado (tamanho, permissões, memória, CPU) | Testado |
+| 32 | **O painel não mostrava o espaço, a rede nem o tempo ligado** | O painel agora mostra os três | Testado |
 
 ---
 
