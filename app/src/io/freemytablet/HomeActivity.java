@@ -349,8 +349,10 @@ public class HomeActivity extends Activity {
             if (prefsVersion != Prefs.version) {   // the favorites or the theme changed in the settings
                 prefsVersion = Prefs.version;
                 home.reload();
+                home.layoutWidget();   // the size of the widget may have changed
                 styleNote();     // the note field takes the color of the theme
                 applyMode();
+                root.requestLayout();
             }
             home.resume();
         }

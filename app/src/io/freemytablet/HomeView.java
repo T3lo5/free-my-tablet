@@ -157,6 +157,7 @@ public class HomeView extends View implements Choreographer.FrameCallback {
             post(() -> {
                 favorites.clear();
                 favorites.addAll(row);
+                layoutWidget();     // the size of the widget may have changed in the settings
                 areaNames.clear();
                 areaNames.add(Ui.tr("Início", "Home"));
                 for (Prefs.Area area : list) areaNames.add(area.name);
@@ -270,7 +271,7 @@ public class HomeView extends View implements Choreographer.FrameCallback {
     }
 
     /** Puts the slot back in place (the height of the widget changed). */
-    private void layoutWidget() {
+    public void layoutWidget() {
         float pad = dp(portrait() ? 24 : 32);
         // The size the person chose, or the one the widget asks for when it is bigger (the widget is not cut).
         int wh = Math.max(Prefs.widgetSize(), widgetHeight);
