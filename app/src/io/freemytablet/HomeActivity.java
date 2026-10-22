@@ -9,6 +9,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.RectF;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -45,6 +46,7 @@ public class HomeActivity extends Activity {
     private EditText search;
     private AppWidgetHost host;          // the widget in the slot
     private AppWidgetHostView widgetView;
+    private int lastWidgetSize;          // the size the widget was told about
     private final Handler handler = new Handler(Looper.getMainLooper());
     private int lastNotices = -1;
     private boolean running;
@@ -154,6 +156,7 @@ public class HomeActivity extends Activity {
         };
         home.onSearchTap = this::showSearch;
         home.onAreaTap = this::chooseArea;
+        home.onTodayNote = this::openTodayNote;
     }
 
     /** The sync button: the git pull and the copy, done by Termux (that is where git is). */
@@ -221,6 +224,33 @@ public class HomeActivity extends Activity {
             }
             @Override public void afterTextChanged(android.text.Editable s) {}
         });
+    }
+
+    /** Opens the Obsidian with the note of the day (the file the quick note writes). */
+    private void openTodayNote() {
+        String vault = Vault.vaultName(this);
+        if (vault.isEmpty()) {
+            home.notice(Ui.tr("Escolha a pasta do Obsidian primeiro.", "Choose the Obsidian folder first."));
+            return;
+        }
+        String file = Ui.tr("Nota rápida ", "Quick note ")
+                + new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(new java.util.Date())
+                + ".md";
+        String folder = Prefs.noteFolder();
+        final String path = folder.isEmpty() ? file : folder + "/" + file;
+        final Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(Vault.obsidianUri(vault, path)));
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        // The note of the day is made first: with a file that does not exist, the Obsidian opens another one.
+        new Thread(() -> {
+            Vault.ensure(this, path, "# " + Ui.date(System.currentTimeMillis()) + "\n\n");
+            runOnUiThread(() -> {
+                try {
+                    startActivity(intent);
+                } catch (RuntimeException e) {
+                    home.notice(Ui.tr("Não consegui abrir o Obsidian.", "I couldn't open Obsidian."));
+                }
+            });
+        }, "today-note").start();
     }
 
     /** The person tapped a work area: the row of apps changes. */
@@ -401,6 +431,11 @@ public class HomeActivity extends Activity {
         options.putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, height);
         try {
             AppWidgetManager.getInstance(this).updateAppWidgetOptions(id, options);
+            if (width != lastWidgetSize) {
+                // The size changed: the widget draws itself again (with more or fewer notes).
+                lastWidgetSize = width;
+                NotesWidget.refresh(this);
+            }
         } catch (RuntimeException e) {
             AppLog.w("could not tell the widget its size: " + e.getMessage());
         }

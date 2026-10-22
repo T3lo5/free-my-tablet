@@ -3,4 +3,7 @@
     <string name="app_name">Free My Tablet</string>
     <string name="widget_notes_title">Últimas notas</string>
     <string name="widget_notes_empty">Nenhuma nota ainda</string>
+    <string name="widget_notes_today">hoje</string>
+    <string name="widget_notes_yesterday">ontem</string>
+    <string name="widget_notes_open">abrir o vault</string>
 </resources>

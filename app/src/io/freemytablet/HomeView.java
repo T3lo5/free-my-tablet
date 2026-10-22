@@ -440,6 +440,9 @@ public class HomeView extends View implements Choreographer.FrameCallback {
     /** Called when the person taps a work area (the index: -1 = the main row). */
     public AreaTap onAreaTap;
 
+    /** Called when the person taps the button of the note of the day. */
+    public Runnable onTodayNote;
+
     /** The work area the person tapped. */
     public interface AreaTap {
         void area(int index);
@@ -474,7 +477,15 @@ public class HomeView extends View implements Choreographer.FrameCallback {
     /** The small buttons at the bottom: the sync (left) and all the apps (right). */
     private void drawButtons(Canvas c) {
         drawRoundButton(c, dp(24) + dp(22), h - dp(24) - dp(22), "sync");
+        drawRoundButton(c, w / 2f, h - dp(24) - dp(22), "note");   // the note of the day
         drawRoundButton(c, w - dp(24) - dp(22), h - dp(24) - dp(22), "apps");
+    }
+
+    /** The button of the note of the day (in the middle of the row of buttons). */
+    private boolean hitTodayButton(float x, float y) {
+        float r = dp(22);
+        float cx = w / 2f, cy = h - dp(24) - r;
+        return Math.abs(x - cx) <= r && Math.abs(y - cy) <= r;
     }
 
     private void drawRoundButton(Canvas c, float cx, float cy, String symbol) {
@@ -660,6 +671,11 @@ public class HomeView extends View implements Choreographer.FrameCallback {
             }
             click.open();
             HomeApps.open(activity, favorites.get(index));
+            return;
+        }
+        if (hitTodayButton(x, y)) {
+            click.move();
+            if (onTodayNote != null) onTodayNote.run();
             return;
         }
         if (hitAllButton(x, y)) {

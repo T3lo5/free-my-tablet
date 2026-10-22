@@ -100,6 +100,40 @@ final class Vault {
      * A folder inside the vault (made when it does not exist), or null. The system is asked about the tree
      * and the id of the folder: the tree alone is not enough to look inside a folder.
      */
+    /**
+     * Makes sure the file is there (inside the note's folder), with that content when it does not exist yet.
+     * Returns true when the file is there.
+     */
+    static boolean ensure(Context c, String path, String content) {
+        String tree = Prefs.vault();
+        if (tree.isEmpty()) return false;
+        try {
+            Uri root = Uri.parse(tree);
+            String rootId = DocumentsContract.getTreeDocumentId(root);
+            ContentResolver resolver = c.getContentResolver();
+            String folderId = rootId;
+            String name = path;
+            int slash = path.lastIndexOf('/');
+            if (slash > 0) {
+                folderId = subFolder(resolver, root, rootId, path.substring(0, slash));
+                if (folderId == null) return false;
+                name = path.substring(slash + 1);
+            }
+            if (find(resolver, root, folderId, name) != null) return true;   // it is already there
+            Uri parent = DocumentsContract.buildDocumentUriUsingTree(root, folderId);
+            Uri created = DocumentsContract.createDocument(resolver, parent, "text/markdown", name);
+            if (created == null) return false;
+            try (OutputStream out = resolver.openOutputStream(created, "rwt")) {
+                if (out == null) return false;
+                out.write(content.getBytes(StandardCharsets.UTF_8));
+            }
+            return true;
+        } catch (Exception e) {
+            AppLog.w("could not make the note of the day: " + e.getMessage());
+            return false;
+        }
+    }
+
     private static String subFolder(ContentResolver resolver, Uri tree, String documentId, String path)
             throws IOException {
         String current = documentId;

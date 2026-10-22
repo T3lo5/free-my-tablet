@@ -2,6 +2,14 @@
 
 Everything that changed, newest first.
 
+## v1.14
+
+- **The widget says when each note was changed** ("hoje", "ontem" or the date) and shows more notes when
+  the slot is big enough: three in the medium one, four and the "open the vault" line in the big one.
+- **The title of the widget opens the vault** in the Obsidian, and the line at the bottom does the same.
+- **The note of the day is one tap away**: a button in the home screen opens it in the Obsidian (the file is
+  made first, otherwise the Obsidian opens another note).
+
 ## v1.13
 
 - **The widget no longer stays loading forever.** The app was not telling the system how big the slot is,
