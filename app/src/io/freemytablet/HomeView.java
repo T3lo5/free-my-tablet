@@ -34,6 +34,9 @@ public class HomeView extends View implements Choreographer.FrameCallback {
 
     private final List<HomeApps.Item> favorites = new ArrayList<>();
 
+    /** The apps opened lately (the row on top of the list of all the apps). */
+    private final List<HomeApps.Item> recents = new ArrayList<>();
+
     /** The names of the work areas (the row of tabs above the apps). */
     private final List<String> areaNames = new ArrayList<>();
     private final List<RectF> areaRects = new ArrayList<>();
@@ -160,6 +163,8 @@ public class HomeView extends View implements Choreographer.FrameCallback {
             post(() -> {
                 favorites.clear();
                 favorites.addAll(row);
+                recents.clear();
+                recents.addAll(recentItems());
                 layoutWidget();     // the size of the widget may have changed in the settings
                 areaNames.clear();
                 areaNames.add(Ui.tr("Início", "Home"));
@@ -523,21 +528,20 @@ public class HomeView extends View implements Choreographer.FrameCallback {
         hint.setColor(0x99FFFFFF);
         c.drawText(filter.isEmpty() ? Ui.tr("Buscar app", "Search an app") : filter,
                 searchRect.left + dp(42), searchRect.centerY() + dp(5), hint);
-        float top = dp(74), bottom = h - dp(24);
+        float bottom = h - dp(24);
         // The apps opened lately, in a row on top.
-        List<HomeApps.Item> recents = recentItems();
         float recentH = 0;
         if (!recents.isEmpty() && filter.isEmpty()) {
             recentH = iconSize + dp(26);
             hint.setColor(0x99FFFFFF);
-            c.drawText(Ui.tr("Recentes", "Recent"), dp(20), top + dp(14), hint);
+            c.drawText(Ui.tr("Recentes", "Recent"), dp(20), dp(74) + dp(14), hint);
             float slot = (w - dp(40)) / Math.min(5, recents.size());
             for (int i = 0; i < Math.min(5, recents.size()); i++) {
                 float cx = dp(20) + slot * i + slot / 2;
-                drawIcon(c, recents.get(i), cx, top + dp(30) + iconSize / 2, false);
+                drawIcon(c, recents.get(i), cx, dp(74) + dp(30) + iconSize / 2, false);
             }
-            top += recentH;
         }
+        float top = gridTop();
         float cell = Math.max(dp(72), iconSize + dp(34));
         int cols = Math.max(3, (int) ((w - dp(40)) / cell));
         float cellW = (w - dp(40)) / cols;
@@ -586,6 +590,13 @@ public class HomeView extends View implements Choreographer.FrameCallback {
             }
         }
         return out;
+    }
+
+    /** Where the grid of the apps starts: under the search box and under the row of the recents. */
+    private float gridTop() {
+        float top = dp(74);
+        if (filter.isEmpty() && !recents.isEmpty()) top += iconSize + dp(26);
+        return top;
     }
 
     /** Whether the list is being filtered. */
@@ -731,7 +742,24 @@ public class HomeView extends View implements Choreographer.FrameCallback {
             if (onSearchTap != null) onSearchTap.run();
             return;
         }
-        float top = dp(74), bottom = h - dp(24);
+        float top = gridTop(), bottom = h - dp(24);
+        // The row of the recents: the app opens like the others.
+        if (!recents.isEmpty() && filter.isEmpty() && y >= dp(74) && y < top) {
+            float slot = (w - dp(40)) / Math.min(5, recents.size());
+            int at = (int) ((x - dp(20)) / slot);
+            if (at >= 0 && at < Math.min(5, recents.size())) {
+                click.open();
+                HomeApps.open(activity, recents.get(at));
+                allOpen = false;
+                invalidate();
+                startAnimation();
+                overlayChanged();
+                return;
+            }
+            allOpen = false;
+            invalidate();
+            return;
+        }
         if (y < top || y > bottom) { allOpen = false; invalidate(); return; }
         float cell = Math.max(dp(72), iconSize + dp(34));
         int cols = Math.max(3, (int) ((w - dp(40)) / cell));

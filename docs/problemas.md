@@ -47,6 +47,7 @@ impossível não vira promessa, e o que não faz sentido para um launcher leve f
 | 32 | **O painel não mostrava o espaço, a rede nem o tempo ligado** | O painel agora mostra os três | Testado |
 | 33 | **A tela de configurações redesenhava 60 vezes por segundo** (nada mudava nela) | Ela é desenhada só quando algo muda: 6% de um núcleo → quase nada | Medido |
 | 34 | **Não havia um único teste automático** | Um runner sem Gradle e sem JUnit (34 verificações da lógica pura), roda na CI antes de buildar | 34 verificações |
+| 35 | **Na gaveta de apps, o toque caía uma linha abaixo** (a fileira de "Recentes" empurrava a grade, o cálculo do toque não) | O desenho e o toque usam a mesma base; os "Recentes" viraram clicáveis | Corrigido |
 
 ---
 
