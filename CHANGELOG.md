@@ -2,6 +2,16 @@
 
 Everything that changed, newest first.
 
+## v1.15
+
+- **A new screen: "O que o Free My Tablet ganhou"** — the tablet now, and the home screen side by side with
+  the tablet's own: the size of the app, the permissions it asks for, the memory it takes and the processor
+  it uses. Everything measured, nothing guessed.
+- **The panel of the tablet** shows the storage, the network (the name, the address, the signal, the speed) and
+  how long the tablet has been on.
+- **The Space screen remembers how much the cleanups freed**, and the gain screen shows it.
+- **The back button goes back to the list** of the settings (it used to close the app from any sub-screen).
+
 ## v1.14
 
 - **The widget says when each note was changed** ("hoje", "ontem" or the date) and shows more notes when

@@ -150,16 +150,16 @@ public class SettingsActivity extends Activity {
         private String statusText = "";
 
         static final int MAIN = 0, FAVORITES = 1, OFF_APPS = 2, SPACE = 3, TALKERS = 4, UPDATES = 5, PANEL = 6,
-                AREAS = 7, AREA_APPS = 8;
+                AREAS = 7, AREA_APPS = 8, GAIN = 9;
 
         /** The lines of the main screen, in the order they are shown. */
         static final int HOME = 0, ON_SCREEN = 1, AREAS_ROW = 2, VAULT = 3, NOTE_FOLDER = 4, TODAY_NOTE = 5,
                 VAULT_SEARCH = 6, WEATHER = 7, WIDGET = 8, WIDGET_SIZE = 9, SYNC = 10, SPACE_ROW = 11,
-                PANEL_ROW = 12, TALKERS_ROW = 13, UPDATES_ROW = 14, EXPORT = 15, OFF = 16, LANGUAGE = 17,
-                THEME = 18, ABOUT = 19;
+                PANEL_ROW = 12, GAIN_ROW = 13, TALKERS_ROW = 14, UPDATES_ROW = 15, EXPORT = 16, OFF = 17,
+                LANGUAGE = 18, THEME = 19, ABOUT = 20;
         static final int[] ROWS = {HOME, ON_SCREEN, AREAS_ROW, VAULT, NOTE_FOLDER, TODAY_NOTE, VAULT_SEARCH, WEATHER,
-                WIDGET, WIDGET_SIZE, SYNC, SPACE_ROW, PANEL_ROW, TALKERS_ROW, UPDATES_ROW, EXPORT, OFF, LANGUAGE,
-                THEME, ABOUT};
+                WIDGET, WIDGET_SIZE, SYNC, SPACE_ROW, PANEL_ROW, GAIN_ROW, TALKERS_ROW, UPDATES_ROW, EXPORT, OFF,
+                LANGUAGE, THEME, ABOUT};
 
         SettingsView(Activity a) {
             super(a);
@@ -179,6 +179,15 @@ public class SettingsActivity extends Activity {
             lastFrame = 0;
             Choreographer.getInstance().postFrameCallback(this);
             handler.post(poll);
+        }
+
+        /** The back button inside a sub-screen: back to the list of the settings. */
+        boolean goBack() {
+            if (screen == MAIN) return false;
+            screen = MAIN;
+            scroll = 0;
+            invalidate();
+            return true;
         }
 
         /** Reads the rows again (the vault was chosen, the mode changed). */
@@ -237,6 +246,7 @@ public class SettingsActivity extends Activity {
                 case SYNC: return Ui.tr("Sincronizar", "Sync");
                 case SPACE_ROW: return Ui.tr("Espaço", "Space");
                 case PANEL_ROW: return Ui.tr("Tablet", "Tablet");
+                case GAIN_ROW: return Ui.tr("O que o Free My Tablet ganhou", "What Free My Tablet gained");
                 case TALKERS_ROW: return Ui.tr("Quem fala com você", "Who talks to you");
                 case UPDATES_ROW: return Ui.tr("Atualizações", "Updates");
                 case EXPORT: return Ui.tr("Exportar as escolhas", "Export the choices");
@@ -269,6 +279,7 @@ public class SettingsActivity extends Activity {
                 case SYNC: return Ui.tr("Ajustar", "Set up");
                 case SPACE_ROW: return Ui.tr("O que ocupa o tablet", "What is using the tablet");
                 case PANEL_ROW: return Ui.tr("Memória, CPU e bateria", "Memory, CPU and battery");
+                case GAIN_ROW: return Ui.tr("Comparar com o Início do tablet", "Compare with the tablet's home");
                 case EXPORT: return Ui.tr("Salvar ou restaurar", "Save or restore");
                 case TALKERS_ROW: return Ui.tr("Notificações", "Notifications");
                 case UPDATES_ROW: return updateState;
@@ -320,6 +331,8 @@ public class SettingsActivity extends Activity {
                 drawPanel(c);
             } else if (screen == AREAS) {
                 drawAreas(c);
+            } else if (screen == GAIN) {
+                drawGain(c);
             } else {
                 drawChecklist(c);
             }
@@ -403,6 +416,79 @@ public class SettingsActivity extends Activity {
                 c.drawText(line, dp(20), y + dp(30), rowTitle);
                 y += rowH;
             }
+        }
+
+        /** What Free My Tablet is worth on this tablet (and against the tablet's own home screen). */
+        private void drawGain(Canvas c) {
+            title.setColor(0xFFFFFFFF);
+            c.drawText(Ui.tr("O que o Free My Tablet ganhou", "What Free My Tablet gained"), dp(20), dp(44), title);
+            float y = top - scroll;
+            for (String line : gainLines) {
+                if (y > bottom + rowH || y + rowH < top) { y += rowH; continue; }
+                rowTitle.setColor(0xFFFFFFFF);
+                c.drawText(line, dp(20), y + dp(30), rowTitle);
+                y += rowH;
+            }
+        }
+
+        private List<String> gainLines = new ArrayList<>();
+
+        /** The screen of the gain: the numbers now, and the comparison with the tablet's own home. */
+        private void openGain() {
+            screen = GAIN;
+            scroll = 0;
+            gainLines = new ArrayList<>();
+            gainLines.add(Ui.tr("Lendo…", "Reading…"));
+            invalidate();
+            new Thread(() -> {
+                List<String> lines = new ArrayList<>();
+                try (Adb adb = Adb.connect(activity, 30_000, null)) {
+                    Gain.Data data = Gain.read(adb, activity);
+                    lines.add(Ui.tr("O tablet agora", "The tablet now"));
+                    lines.add("  " + Ui.tr("Espaço livre: ", "Free space: ") + size(data.freeSpace)
+                            + Ui.tr(" de ", " of ") + size(data.totalSpace));
+                    if (data.freedSpace > 0) {
+                        lines.add("  " + Ui.tr("Liberado pelas limpezas: ", "Freed by the cleanups: ")
+                                + size(data.freedSpace));
+                    }
+                    lines.add("  " + Ui.tr("Memória livre: ", "Free memory: ") + size(data.ramFree)
+                            + Ui.tr(" de ", " of ") + size(data.ramTotal));
+                    lines.add("  " + Ui.tr("Swap: ", "Swap: ") + size(data.swapUsed));
+                    lines.add("  " + Ui.tr("Processos: ", "Processes: ") + data.processes);
+                    lines.add("");
+                    lines.add(Ui.tr("Apps de fábrica desligados: ", "Factory apps turned off: ") + data.appsOff);
+                    if (data.appsGone > 0) {
+                        lines.add(Ui.tr("Apps de fábrica que não estão mais instalados: ",
+                                "Factory apps no longer installed: ") + data.appsGone);
+                    }
+                    lines.add("");
+                    lines.add(Ui.tr("A tela de Início, lado a lado", "The home screen, side by side"));
+                    lines.add("  " + Ui.tr("Início do tablet: ", "The tablet's home: ") + megabytes(data.sysApkSize)
+                            + "   " + data.sysPermissions + Ui.tr(" permissões", " permissions"));
+                    lines.add("  " + Ui.tr("Free My Tablet: ", "Free My Tablet: ") + megabytes(data.apkSize)
+                            + "   " + data.permissions + Ui.tr(" permissões", " permissions"));
+                    if (data.ramPss > 0 || data.sysRamPss > 0) {
+                        lines.add("  " + Ui.tr("Início do tablet: ", "The tablet's home: ") + size(data.sysRamPss)
+                                + Ui.tr(" de memória", " of memory"));
+                        lines.add("  " + Ui.tr("Free My Tablet: ", "Free My Tablet: ") + size(data.ramPss)
+                                + Ui.tr(" de memória", " of memory"));
+                    }
+                    lines.add("  " + Ui.tr("CPU do Início do app: ", "The app's home CPU: ")
+                            + String.format(Locale.getDefault(), "%.1f", data.homeCpu) + "%");
+                    lines.add("");
+                    lines.add(Ui.tr("E o que não tem aqui", "And what is not here"));
+                    lines.add("  " + Ui.tr("Nem propaganda, nem feed, nem grade de apps", "No ads, no feed, no app grid"));
+                    lines.add("  " + Ui.tr("Nenhuma conta, nenhum rastreio", "No account, no tracking"));
+                    lines.add("  " + Ui.tr("Nada é desinstalado: um botão devolve tudo", "Nothing is uninstalled: one button brings it back"));
+                } catch (Exception e) {
+                    lines.add(Ui.tr("Não consegui ler: o ADB do tablet não está aberto.",
+                            "I couldn't read: the tablet's ADB is not open."));
+                }
+                activity.runOnUiThread(() -> {
+                    gainLines = lines;
+                    invalidate();
+                });
+            }, "gain").start();
         }
 
         /** The work areas: the list of them, and the button to make a new one. */
@@ -598,6 +684,7 @@ public class SettingsActivity extends Activity {
                     else if (screen == TALKERS) tapTalker((int) ((e.getY() + scroll - top + rowH / 2) / rowH));
                     else if (screen == UPDATES) tapUpdate((int) ((e.getY() + scroll - top + rowH / 2) / rowH));
                     else if (screen == AREAS) tapArea((int) ((e.getY() + scroll - top + rowH / 2) / rowH));
+                    else if (screen == GAIN) { /* this screen is only read */ }
                     else tapChecklist(e.getY());
                     return true;
                 }
@@ -615,6 +702,7 @@ public class SettingsActivity extends Activity {
             else if (screen == TALKERS) items = talkerLines.size();
             else if (screen == UPDATES) items = updateLines.size();
             else if (screen == AREAS) items = areaLines.size();
+            else if (screen == GAIN) items = gainLines.size();
             else items = apps.size();
             return Math.max(0, items * rowH - (bottom - top));
         }
@@ -642,6 +730,7 @@ public class SettingsActivity extends Activity {
                 case SYNC: askSync(); break;
                 case SPACE_ROW: openSpace(); break;
                 case PANEL_ROW: openPanel(); break;
+                case GAIN_ROW: openGain(); break;
                 case TALKERS_ROW: openTalkers(); break;
                 case UPDATES_ROW: openUpdates(); break;
                 case OFF: openChecklist(OFF_APPS); break;
@@ -749,6 +838,27 @@ public class SettingsActivity extends Activity {
                     lines.add("");
                     lines.add(Ui.tr("Bateria", "Battery"));
                     lines.add("  " + data.battery + "%   " + data.temperature + "°C");
+                    lines.add("");
+                    lines.add(Ui.tr("Espaço", "Storage"));
+                    lines.add("  " + Ui.tr("Livre: ", "Free: ") + data.size(data.freeSpace)
+                            + Ui.tr(" de ", " of ") + data.size(data.totalSpace));
+                    lines.add("");
+                    lines.add(Ui.tr("Rede", "Network"));
+                    if (!data.ssid.isEmpty()) lines.add("  " + data.ssid + (data.ip.isEmpty() ? "" : "   " + data.ip));
+                    if (data.signal != 0) {
+                        lines.add("  " + Ui.tr("Sinal: ", "Signal: ") + data.signal + " dBm"
+                                + (data.speed.isEmpty() ? "" : "   " + data.speed));
+                    }
+                    if (data.uptime > 0) {
+                        long hours = data.uptime / 3600;
+                        long days = hours / 24;
+                        String text;
+                        if (days == 1) text = Ui.tr("1 dia", "1 day");
+                        else if (days > 1) text = days + Ui.tr(" dias", " days");
+                        else text = hours + Ui.tr(" h", " h");
+                        lines.add("");
+                        lines.add(Ui.tr("Ligado há ", "Up for ") + text);
+                    }
                     lines.add("");
                     lines.add(Ui.tr("Processos vivos: ", "Processes alive: ") + data.processes);
                     lines.add("");
@@ -860,6 +970,11 @@ public class SettingsActivity extends Activity {
 
         private List<String> spaceLines = new ArrayList<>();
 
+        /** A size in megabytes, with one decimal ("1,9 MB"). */
+        private String megabytes(long bytes) {
+            return String.format(Locale.getDefault(), "%.1f MB", bytes / (1024.0 * 1024));
+        }
+
         /** A size in a language people read ("1,2 GB"). */
         private String size(long bytes) {
             if (bytes >= 1024L * 1024 * 1024) return String.format(Locale.getDefault(), "%.1f GB", bytes / (1024.0 * 1024 * 1024));
@@ -875,6 +990,7 @@ public class SettingsActivity extends Activity {
             new Thread(() -> {
                 String message;
                 try (Adb adb = Adb.connect(activity, 30_000, null)) {
+                    long before = Space.free(adb)[0];
                     if (index == first) {
                         Space.trimCaches(adb);
                         message = Ui.tr("Cache limpo.", "Cache cleared.");
@@ -882,6 +998,9 @@ public class SettingsActivity extends Activity {
                         int done = Space.clearTurnedOff(adb, Space.turnedOff(adb));
                         message = Ui.tr(done + " apps limpos.", done + " apps cleared.");
                     }
+                    // How much space it freed: the "gain" screen shows it.
+                    long after = Space.free(adb)[0];
+                    if (after > before) Prefs.addFreedSpace(after - before);
                 } catch (Exception e) {
                     message = Ui.tr("Não consegui: o ADB do tablet não está aberto.",
                             "I couldn't: the tablet's ADB is not open.");

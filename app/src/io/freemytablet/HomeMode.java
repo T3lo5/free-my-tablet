@@ -722,6 +722,11 @@ final class HomeMode {
 
     // MARK: - State (a file shared by the two processes; atomic writes)
 
+    /** How many factory apps the switch turned off. */
+    static int disabledCount(Context c) {
+        return stringList(state(c), "disabled").size();
+    }
+
     static JSONObject state(Context c) {
         synchronized (FILE_LOCK) {
             File f = new File(c.getFilesDir(), "home-state.json");

@@ -34,6 +34,9 @@ final class Panel {
     static final class Data {
         long ramTotal, ramUsed, ramFree, swapTotal, swapUsed, cache, apps;
         int battery, temperature, processes;
+        long freeSpace, totalSpace, uptime;
+        String ssid = "", ip = "", speed = "";
+        int signal;
         final List<Entry> cpu = new ArrayList<>();
         final List<Entry> memory = new ArrayList<>();
 
@@ -51,6 +54,7 @@ final class Panel {
         memory(adb, data);
         processor(adb, data);
         battery(adb, data);
+        tablet(adb, data);
         data.processes = adb.shell("ps -A | wc -l").trim().split("\\s+")[0].length() > 0
                 ? Integer.parseInt(adb.shell("ps -A | wc -l").trim()) : 0;
         return data;
@@ -129,6 +133,49 @@ final class Panel {
         });
     }
 
+    /** The storage, the network and how long the tablet has been on. */
+    private static void tablet(Adb adb, Data data) throws IOException {
+        String df = adb.shell("df /data | tail -1");
+        String[] parts = df.trim().split("\\s+");
+        if (parts.length >= 4) {
+            try {
+                data.totalSpace = Long.parseLong(parts[1]) * 1024;
+                data.freeSpace = Long.parseLong(parts[3]) * 1024;
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        try {
+            String up = adb.shell("cat /proc/uptime").trim();
+            data.uptime = (long) Double.parseDouble(up.split("\\s+")[0]);
+        } catch (Exception ignored) {
+        }
+        try {
+            String wifi = adb.shell("dumpsys wifi | grep -i mWifiInfo | head -1");
+            int ssid = wifi.indexOf("SSID: ");
+            if (ssid >= 0) {
+                int end = wifi.indexOf(',', ssid);
+                data.ssid = wifi.substring(ssid + 6, end < 0 ? wifi.length() : end).trim();
+            }
+            int rssi = wifi.indexOf("RSSI: ");
+            if (rssi >= 0) {
+                int end = wifi.indexOf(',', rssi);
+                data.signal = Integer.parseInt(wifi.substring(rssi + 6, end < 0 ? wifi.length() : end).trim());
+            }
+            int speed = wifi.indexOf("Link speed: ");
+            if (speed >= 0) {
+                int end = wifi.indexOf(',', speed);
+                data.speed = wifi.substring(speed + 12, end < 0 ? wifi.length() : end).trim();
+            }
+            String ip = adb.shell("ip -4 addr show wlan0 | grep inet");
+            int at = ip.indexOf("inet ");
+            if (at >= 0) {
+                int end = ip.indexOf('/', at);
+                data.ip = ip.substring(at + 5, end < 0 ? ip.length() : end).trim();
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
     /** The battery: the level and the temperature. */
     private static void battery(Adb adb, Data data) throws IOException {
         String out = adb.shell("dumpsys battery");
@@ -153,14 +200,16 @@ final class Panel {
     }
 
     /** A number after some text ("Total RAM: 1,892,156K" → 1892156). */
-    private static long number(String text, String start) {
+    /** The number after that text, with the marks of thousands ("1,892,156K" → 1892156). */
+    static long number(String text, String start) {
         int at = text.indexOf(start);
         if (at < 0) return 0;
         return plain(text.substring(at + start.length()));
     }
 
     /** A number after some text ("SwapTotal:  1539496 kB"). */
-    private static long value(String text, String start) {
+    /** The number after that text (0 when it is not there). */
+    static long value(String text, String start) {
         int at = text.indexOf(start);
         if (at < 0) return 0;
         String rest = text.substring(at + start.length()).trim();

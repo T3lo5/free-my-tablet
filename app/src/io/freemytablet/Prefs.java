@@ -218,6 +218,12 @@ final class Prefs {
     static int area() { return sp().getInt("area", -1); }
     static void setArea(int index) { put("area", index); }
 
+    // MARK: - The gains
+
+    /** How much space the cleanups of the Space screen freed (in bytes). */
+    static long freedSpace() { return sp().getLong("freedSpace", 0); }
+    static void addFreedSpace(long bytes) { put("freedSpace", freedSpace() + bytes); }
+
     // MARK: - The updates
 
     /** When the app last looked for a new version (the API is not called again for a while). */
