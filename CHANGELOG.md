@@ -2,6 +2,13 @@
 
 Everything that changed, newest first.
 
+## v1.13
+
+- **The widget no longer stays loading forever.** The app was not telling the system how big the slot is,
+  so the widget received a size of zero by zero and never finished loading (the tablet's own launcher
+  tells it, and the widget works there).
+- The widgets left over from before are removed: the slot holds one.
+
 ## v1.12
 
 - **Work areas**: groups of apps (study, work, reading…) that take the place of the row of the home screen.

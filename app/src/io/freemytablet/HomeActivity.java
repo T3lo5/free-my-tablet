@@ -77,6 +77,7 @@ public class HomeActivity extends Activity {
                 widgetView.measure(View.MeasureSpec.makeMeasureSpec(wr - wl, View.MeasureSpec.EXACTLY),
                         View.MeasureSpec.makeMeasureSpec(wb - wt, View.MeasureSpec.EXACTLY));
                 widgetView.layout(wl, wt, wr, wb);
+                tellWidgetSize(Prefs.widgetId());
             }
             if (search.getVisibility() == View.VISIBLE) {
                 RectF area = home.searchBounds();
@@ -380,6 +381,55 @@ public class HomeActivity extends Activity {
     }
 
     /** Puts the widget of the slot on the home screen (the person chose it in the settings). */
+    /**
+     * Tells the system how big the slot is. A widget that does not know its own size (the options come
+     * with zeroes) stays loading forever: this is what the launcher of the tablet does.
+     */
+    private void tellWidgetSize(int id) {
+        if (host == null || home == null) return;
+        RectF area = home.widgetBounds();
+        if (area.width() <= 0 || area.height() <= 0) return;
+        float density = getResources().getDisplayMetrics().density;
+        int width = Math.round(area.width() / density);
+        int height = Math.round(area.height() / density);
+        Bundle options = new Bundle();
+        options.putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, width);
+        options.putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, height);
+        options.putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, width);
+        options.putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, height);
+        try {
+            AppWidgetManager.getInstance(this).updateAppWidgetOptions(id, options);
+        } catch (RuntimeException e) {
+            AppLog.w("could not tell the widget its size: " + e.getMessage());
+        }
+    }
+
+    /**
+     * The widget of the slot: the one the person picked. The others (the ones left from before an
+     * update of the app) go away: the slot holds one.
+     */
+    private int currentWidget() {
+        int[] ids = host.getAppWidgetIds();
+        AppWidgetManager manager = AppWidgetManager.getInstance(this);
+        int current = Prefs.widgetId();
+        boolean known = false;
+        for (int id : ids) {
+            if (id == current && manager.getAppWidgetInfo(id) != null) known = true;
+        }
+        if (!known) {
+            // The app was updated (the choice was forgotten): the newest widget that is really there wins.
+            current = 0;
+            for (int id : ids) {
+                if (manager.getAppWidgetInfo(id) != null && id > current) current = id;
+            }
+            if (current != 0) Prefs.setWidgetId(current);
+        }
+        for (int id : ids) {
+            if (id != current) host.deleteAppWidgetId(id);   // the slot holds one
+        }
+        return current;
+    }
+
     /** The reading mode: the note field and the widget step aside (only the clock and the apps). */
     private void applyMode() {
         boolean read = home != null && home.reading();
@@ -389,7 +439,7 @@ public class HomeActivity extends Activity {
     }
 
     private void showWidget() {
-        int id = Prefs.widgetId();
+        int id = currentWidget();
         if (id == 0) {
             if (widgetView != null) widgetView.setVisibility(View.GONE);
             return;
@@ -417,6 +467,7 @@ public class HomeActivity extends Activity {
         widgetView.setVisibility(View.VISIBLE);
         applyMode();
         root.requestLayout();
+        tellWidgetSize(id);
         NotesWidget.refresh(this);   // the notes may have changed since the last time
     }
 
