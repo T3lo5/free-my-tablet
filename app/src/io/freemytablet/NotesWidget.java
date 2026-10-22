@@ -122,12 +122,20 @@ public class NotesWidget extends AppWidgetProvider {
     /** "hoje", "ontem" or "22/10" (when the note was changed). */
     private static String when(Context c, long time) {
         if (time <= 0) return "";
-        long day = 86400000L;
-        long today = startOfDay(System.currentTimeMillis());
-        long then = startOfDay(time);
-        if (today == then) return c.getString(R.string.widget_notes_today);
-        if (today - then == day) return c.getString(R.string.widget_notes_yesterday);
+        int days = daysAgo(System.currentTimeMillis(), time);
+        if (days == 0) return c.getString(R.string.widget_notes_today);
+        if (days == 1) return c.getString(R.string.widget_notes_yesterday);
         return new SimpleDateFormat("dd/MM", Locale.getDefault()).format(new Date(time));
+    }
+
+    /** How many days ago that was (0 = today, 1 = yesterday, -1 = older). */
+    static int daysAgo(long now, long time) {
+        if (time <= 0) return -1;
+        long today = startOfDay(now);
+        long then = startOfDay(time);
+        if (today == then) return 0;
+        if (today - then == 86400000L) return 1;
+        return -1;
     }
 
     /** Midnight of the day of that instant. */

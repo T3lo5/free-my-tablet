@@ -25,6 +25,9 @@ jobs:
           yes | sdkmanager --licenses > /dev/null || true
           ls "$ANDROID_HOME/platforms" || true
 
+      - name: The tests
+        run: ./run-tests.sh
+
       - name: Build
         env:
           # The version of the last release (so a build of the main branch is not older than the release).

@@ -176,7 +176,7 @@ final class Vault {
      * Obsidian does not read a file whose path comes escaped.
      */
     static String obsidianUri(String vault, String path) {
-        return "obsidian://open?vault=" + Uri.encode(vault) + "&file=" + Uri.encode(path).replace("%2F", "/");
+        return "obsidian://open?vault=" + Url.encode(vault) + "&file=" + Url.encode(path).replace("%2F", "/");
     }
 
     /** The name of the vault (the folder's name, what Obsidian calls the vault), or "". */

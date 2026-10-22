@@ -48,12 +48,9 @@ final class Gain {
         d.sysPermissions = permissionsOf(c, SYSTEM_HOME);
         try {
             // The storage.
-            String df = adb.shell("df /data | tail -1");
-            String[] parts = df.trim().split("\\s+");
-            if (parts.length >= 4) {
-                d.totalSpace = Long.parseLong(parts[1]) * 1024;
-                d.freeSpace = Long.parseLong(parts[3]) * 1024;
-            }
+            long[] storage = storage(adb.shell("df /data | tail -1"));
+            d.totalSpace = storage[0];
+            d.freeSpace = storage[1];
             // The memory.
             String mem = adb.shell("dumpsys meminfo");
             d.ramTotal = Panel.number(mem, "Total RAM: ") * 1024;
@@ -86,6 +83,17 @@ final class Gain {
         d.freedSpace = Prefs.freedSpace();
         d.homeCpu = ownCpu();
         return d;
+    }
+
+    /** The storage of the line of "df": the total and the free space (in bytes). */
+    static long[] storage(String line) {
+        String[] parts = line.trim().split("\\s+");
+        if (parts.length < 4) return new long[] {0, 0};
+        try {
+            return new long[] {Long.parseLong(parts[1]) * 1024, Long.parseLong(parts[3]) * 1024};
+        } catch (NumberFormatException e) {
+            return new long[] {0, 0};
+        }
     }
 
     /** The packages the system lists (with that flag: "-d" = the ones that are off, "-u" = the uninstalled). */

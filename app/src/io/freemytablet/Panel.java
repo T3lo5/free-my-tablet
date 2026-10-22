@@ -81,13 +81,7 @@ final class Panel {
             if (colon < 0) continue;
             long kb = plain(trimmed.substring(0, colon));
             if (kb < 20000) continue;   // less than 20 MB does not matter
-            String name = trimmed.substring(colon + 1).trim();
-            int space = name.indexOf(' ');
-            if (space > 0) name = name.substring(0, space);
-            // A process with a colon in the name (a webview) shows only the app.
-            int cut = name.indexOf(':');
-            if (cut > 0) name = name.substring(0, cut);
-            if (name.length() > 30) name = name.substring(0, 29) + "…";
+            String name = appName(trimmed.substring(colon + 1));
             // The system lists an app more than once (the summary and the details): the biggest one wins.
             boolean known = false;
             for (Entry entry : data.memory) {
@@ -181,6 +175,21 @@ final class Panel {
         String out = adb.shell("dumpsys battery");
         data.battery = (int) value(out, "level:");
         data.temperature = (int) (value(out, "temperature:") / 10.0);
+    }
+
+    /**
+     * The name of the app in a line of the meminfo ("   119,752K: system (pid 32393)"): the name without
+     * the pid, without the colon of a webview, and not longer than thirty characters.
+     */
+    static String appName(String text) {
+        String name = text.trim();
+        int space = name.indexOf(' ');
+        if (space > 0) name = name.substring(0, space);
+        // A process with a colon in the name (a webview) shows only the app.
+        int cut = name.indexOf(':');
+        if (cut > 0) name = name.substring(0, cut);
+        if (name.length() > 30) name = name.substring(0, 29) + "…";
+        return name;
     }
 
     /** The first number of a text, ignoring the marks of thousands ("1,892,156K" → 1892156). */

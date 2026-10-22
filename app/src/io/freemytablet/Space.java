@@ -110,7 +110,8 @@ final class Space {
     }
 
     /** The array that starts with that text. */
-    private static String[] array(String text, String start) {
+    /** The list of a dumpsys ("Package Names: [a, b, c]"). */
+    static String[] array(String text, String start) {
         int at = text.indexOf(start);
         if (at < 0) return new String[0];
         int open = text.indexOf('[', at);
