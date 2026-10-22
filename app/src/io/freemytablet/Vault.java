@@ -286,6 +286,12 @@ final class Vault {
         final String path;      // the path inside the vault ("00 - Painel/Home.md")
         final String vault;     // the name of the vault folder
         final long modified;
+        /** The text of the note (when it was read: the search looks inside it). */
+        String text = "";
+        /** The same text in lower case (the search goes through it). */
+        String lower = "";
+        /** Whether the text of the note was read (the search looks inside it). */
+        boolean read;
 
         Note(String title, String path, String vault, long modified) {
             this.title = title;
@@ -335,6 +341,42 @@ final class Vault {
         }, "vault").start();
     }
 
+    /**
+     * The notes with their text: it reads every file, so it takes a while. The notes come one by one
+     * (the search shows them while they are read).
+     */
+    static void notesWithText(Context c, final NoteSink sink) {
+        // The notes of the last walk (with the text inside): there is nothing to read again.
+        List<Note> fresh = cached();
+        if (fresh != null && !fresh.isEmpty() && fresh.get(0).read) {
+            for (Note note : fresh) sink.note(note);
+            return;
+        }
+        new Thread(() -> {
+            String tree = Prefs.vault();
+            if (tree.isEmpty()) return;
+            try {
+                Uri root = Uri.parse(tree);
+                String rootId = DocumentsContract.getTreeDocumentId(root);
+                int slash = rootId.lastIndexOf('/');
+                String vault = slash < 0 ? rootId : rootId.substring(slash + 1);
+                ContentResolver resolver = c.getContentResolver();
+                final List<Note> out = new ArrayList<>();
+                walk(resolver, root, rootId, "", vault, new NoteSink() {
+                    @Override public void note(Note note) {
+                        out.add(note);
+                        sink.note(note);
+                    }
+                }, 0, new int[1], true);
+                sortByDate(out);
+                cache = out;
+                cacheAt = System.currentTimeMillis();
+            } catch (Exception e) {
+                AppLog.w("could not read the notes: " + e.getMessage());
+            }
+        }, "vault-text").start();
+    }
+
     /** The notes of the last walk (the same list, when it is still fresh). */
     static List<Note> cached() {
         // Ten minutes: the walk through the vault is slow (the system asks about every folder) and the
@@ -371,6 +413,12 @@ final class Vault {
     /** Looks through a folder and the ones inside it (up to three levels, a hundred notes). */
     private static void walk(ContentResolver resolver, Uri tree, String documentId, String prefix, String vault,
             NoteSink sink, int depth, int[] count) {
+        walk(resolver, tree, documentId, prefix, vault, sink, depth, count, false);
+    }
+
+    /** Looks through a folder and the ones inside it (up to three levels, a hundred notes). */
+    private static void walk(ContentResolver resolver, Uri tree, String documentId, String prefix, String vault,
+            NoteSink sink, int depth, int[] count, boolean withText) {
         try {
             // The children of a folder: the tree (the one the person gave) and the id of the folder.
             Uri children = DocumentsContract.buildChildDocumentsUriUsingTree(tree, documentId);
@@ -391,8 +439,31 @@ final class Vault {
                         }
                     } else if (name.endsWith(".md")) {
                         count[0]++;
-                        sink.note(new Note(name.substring(0, name.length() - 3), prefix + name, vault,
-                                cursor.getLong(3)));
+                        Note note = new Note(name.substring(0, name.length() - 3), prefix + name, vault,
+                                cursor.getLong(3));
+                        if (withText) {
+                            // The text of the note: the search looks inside it.
+                            try {
+                                Uri file = DocumentsContract.buildDocumentUriUsingTree(tree, cursor.getString(0));
+                                try (InputStream in = resolver.openInputStream(file)) {
+                                    if (in != null) {
+                                        java.io.ByteArrayOutputStream buffer = new java.io.ByteArrayOutputStream();
+                                        byte[] chunk = new byte[8192];
+                                        int n;
+                                        // Twenty thousand bytes are enough to find the text (and the
+                                        // memory of a hundred notes stays small).
+                                        while ((n = in.read(chunk)) > 0 && buffer.size() < 20000) {
+                                            buffer.write(chunk, 0, n);
+                                        }
+                                        note.text = new String(buffer.toByteArray(), StandardCharsets.UTF_8);
+                                        note.lower = note.text.toLowerCase(java.util.Locale.getDefault());
+                                        note.read = true;
+                                    }
+                                }
+                            } catch (Exception ignored) {
+                            }
+                        }
+                        sink.note(note);
                     }
                 }
             }

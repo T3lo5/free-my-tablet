@@ -45,6 +45,8 @@ impossível não vira promessa, e o que não faz sentido para um launcher leve f
 | 30 | **"Abrir a nota de hoje" morava nas configurações** | Agora é um botão na tela de início (o arquivo é criado antes, senão o Obsidian abre outra nota) | Testado |
 | 31 | **Não dava para ver o ganho do app** | A tela "O que o Free My Tablet ganhou": o tablet agora e o Início do tablet lado a lado (tamanho, permissões, memória, CPU) | Testado |
 | 32 | **O painel não mostrava o espaço, a rede nem o tempo ligado** | O painel agora mostra os três | Testado |
+| 33 | **A tela de configurações redesenhava 60 vezes por segundo** (nada mudava nela) | Ela é desenhada só quando algo muda: 6% de um núcleo → quase nada | Medido |
+| 34 | **Não havia um único teste automático** | Um runner sem Gradle e sem JUnit (34 verificações da lógica pura), roda na CI antes de buildar | 34 verificações |
 
 ---
 
@@ -67,7 +69,7 @@ impossível não vira promessa, e o que não faz sentido para um launcher leve f
 | 12 | ~~**Não tem um "modo leitura"**~~ | **Feito na v1.11**: o tema "Leitura" (tela preta, o relógio pequeno, os apps) | — |
 | 13 | ~~**Não tem pastas/áreas de trabalho**~~ | **Feito na v1.12**: as áreas trocam a fileira da tela com um toque | — |
 | 14 | ~~**O app não sabe o que você quer abrir**~~ | **Feito na v1.11**: "Abrir a nota de hoje" (abre o Obsidian na nota do dia) | — |
-| 15 | **A busca no vault só acha pelo nome do arquivo** | Ler o conteúdo dos .md e procurar dentro (mais lento: o SAF pergunta arquivo por arquivo) | médio |
+| 15 | ~~**A busca no vault só acha pelo nome do arquivo**~~ | **Feito na v1.16**: a busca olha o texto dentro da nota | — |
 | 16 | **O tablet está com 14% do armazenamento usado** | A tela de Espaço limpa o cache de todos; o de um app em uso o sistema não deixa | médio (parcialmente feito) |
 
 ---

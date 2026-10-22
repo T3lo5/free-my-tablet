@@ -62,6 +62,21 @@ public final class Tests {
         equal("anteontem", -1, NotesWidget.daysAgo(now, now - 2 * 86400000L));
         equal("sem data", -1, NotesWidget.daysAgo(now, 0));
 
+        // A busca no vault: pelo nome e pelo texto de dentro da nota.
+        Vault.Note peloNome = new Vault.Note("Calendário da Turma", "00 - Painel/Calendário da Turma.md", "pos-coders", 0);
+        Vault.Note peloTexto = new Vault.Note("Home", "00 - Painel/Home.md", "pos-coders", 0);
+        peloTexto.text = "Aqui a gente escreve sobre o harness e o LLm.";
+        peloTexto.lower = peloTexto.text.toLowerCase(java.util.Locale.getDefault());
+        List<Vault.Note> notas = new ArrayList<>();
+        notas.add(peloNome);
+        notas.add(peloTexto);
+        equal("a busca pelo nome", 1, VaultSearch.filter(notas, "Calendário").size());
+        equal("a busca pelo nome (minúscula)", 1, VaultSearch.filter(notas, "calendário").size());
+        equal("a busca por dentro do texto", 1, VaultSearch.filter(notas, "harness").size());
+        equal("a busca por dentro do texto (maiúscula)", 1, VaultSearch.filter(notas, "HARNESS").size());
+        equal("a busca que não acha", 0, VaultSearch.filter(notas, "que nada").size());
+        equal("a busca vazia mostra tudo", 2, VaultSearch.filter(notas, "").size());
+
         // O fim.
         System.out.println();
         System.out.println(passed + " checks passed, " + failures.size() + " failed.");

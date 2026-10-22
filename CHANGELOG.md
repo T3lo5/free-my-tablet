@@ -2,6 +2,16 @@
 
 Everything that changed, newest first.
 
+## v1.16
+
+- **The search in the vault looks inside the notes**, not only at the name: it reads the text of the notes
+  (twenty thousand bytes of each) and finds the word there. The notes come as they are read.
+- **The settings screen was burning the processor for nothing**: it redrew the screen sixty times a second
+  even with nothing changing. Now it is drawn only when something changes (6% of a core → almost nothing).
+- **The tests**: a runner without Gradle and without JUnit (javac and java, like the build) with 34 checks of
+  the pure logic — the reading of the system's numbers, the addresses of the Obsidian, the dates, the search.
+  The CI runs them before building.
+
 ## v1.15
 
 - **A new screen: "O que o Free My Tablet ganhou"** — the tablet now, and the home screen side by side with

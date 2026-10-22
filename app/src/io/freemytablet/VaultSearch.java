@@ -48,14 +48,19 @@ final class VaultSearch {
         list.setAdapter(adapter);
         // The walk through the vault is slow (the system asks about every folder): it happens apart from the
         // screen, and the notes show up as they are found.
-        List<Vault.Note> fresh = Vault.cached();
-        if (fresh != null) {
-            notes.addAll(fresh);
-            adapter.set(filter(notes, field.getText().toString()));
-        }
-        Vault.notesStreaming(a, note -> a.runOnUiThread(() -> {
+        // The notes come one by one, with the text inside: the search finds the word in the note.
+        // The list is not redrawn for each note (that would cost a lot of processor): the notes come
+        // in batches, two or three times a second.
+        final android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
+        final boolean[] waiting = {false};
+        Vault.notesWithText(a, note -> a.runOnUiThread(() -> {
             notes.add(note);
-            adapter.set(filter(notes, field.getText().toString()));
+            if (waiting[0]) return;
+            waiting[0] = true;
+            handler.postDelayed(() -> {
+                waiting[0] = false;
+                adapter.set(filter(notes, field.getText().toString()));
+            }, 400);
         }));
         field.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int x, int y, int z) {}
@@ -78,12 +83,19 @@ final class VaultSearch {
                 .show();
     }
 
-    /** The notes whose path has the text. */
-    private static List<Vault.Note> filter(List<Vault.Note> notes, String text) {
+    /** The notes whose path has the text — or whose text inside has it. */
+    static List<Vault.Note> filter(List<Vault.Note> notes, String text) {
         String wanted = text == null ? "" : text.trim().toLowerCase(Locale.getDefault());
         List<Vault.Note> found = new ArrayList<>();
         for (Vault.Note note : notes) {
-            if (wanted.isEmpty() || note.path.toLowerCase(Locale.getDefault()).contains(wanted)) found.add(note);
+            if (wanted.isEmpty()) {
+                found.add(note);
+                continue;
+            }
+            if (note.path.toLowerCase(Locale.getDefault()).contains(wanted)
+                    || (!note.lower.isEmpty() && note.lower.contains(wanted))) {
+                found.add(note);
+            }
         }
         return found;
     }

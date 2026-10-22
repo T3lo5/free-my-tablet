@@ -13,7 +13,6 @@ import android.graphics.RectF;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.view.Choreographer;
 import android.view.MotionEvent;
 import android.view.View;
 
@@ -124,7 +123,7 @@ public class SettingsActivity extends Activity {
 
     // MARK: - The screen
 
-    static final class SettingsView extends View implements Choreographer.FrameCallback {
+    static final class SettingsView extends View {
         private final Activity activity;
         private final Handler handler = new Handler(Looper.getMainLooper());
         private final Paint title = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.SUBPIXEL_TEXT_FLAG);
@@ -176,9 +175,8 @@ public class SettingsActivity extends Activity {
             state = HomeMode.state(activity);
             HomeMode.checkNow(activity);   // the state can be out of date: the home screen says the truth
             running = true;
-            lastFrame = 0;
-            Choreographer.getInstance().postFrameCallback(this);
             handler.post(poll);
+            invalidate();
         }
 
         /** The back button inside a sub-screen: back to the list of the settings. */
@@ -198,16 +196,7 @@ public class SettingsActivity extends Activity {
 
         void pause() {
             running = false;
-            Choreographer.getInstance().removeFrameCallback(this);
             handler.removeCallbacks(poll);
-        }
-
-        @Override public void doFrame(long frameTimeNanos) {
-            if (!running) return;
-            if (lastFrame == 0) lastFrame = frameTimeNanos;
-            lastFrame = frameTimeNanos;
-            invalidate();
-            Choreographer.getInstance().postFrameCallback(this);
         }
 
         /** Reads what the switch is doing (the state file the main process writes). */
@@ -217,7 +206,11 @@ public class SettingsActivity extends Activity {
                 state = HomeMode.state(activity);
                 String busy = state.optString("busy", "");
                 String error = state.optString("error", "");
-                statusText = !busy.isEmpty() ? busy : error;
+                String text = !busy.isEmpty() ? busy : error;
+                if (!text.equals(statusText)) {
+                    statusText = text;
+                    invalidate();   // the screen is only drawn when something changes
+                }
                 handler.postDelayed(this, 700);
             }
         };
