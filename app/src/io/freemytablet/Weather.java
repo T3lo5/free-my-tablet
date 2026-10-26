@@ -31,7 +31,9 @@ final class Weather {
     /** The temperature now (in the unit the person chose), or 0 when there is nothing yet. */
     static float temperature(Context c) {
         SharedPreferences sp = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
-        return sp.getFloat("temp", 0f);
+        // The value is kept in Celsius, so changing the unit shows the right number at once (no new fetch).
+        if (sp.contains("tempC")) return toUnit(sp.getFloat("tempC", 0f));
+        return sp.getFloat("temp", 0f);   // an older install: the value was already saved in the unit then
     }
 
     /** The weather code (Open-Meteo WMO), or -1. */
@@ -61,10 +63,10 @@ final class Weather {
             try {
                 JSONObject o = new JSONObject(get(url()));
                 JSONObject current = o.getJSONObject("current");
-                float temp = (float) current.getDouble("temperature_2m");
-                if ("F".equals(Prefs.temperature())) temp = temp * 9f / 5f + 32f;
+                float celsius = (float) current.getDouble("temperature_2m");
                 app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
-                        .putFloat("temp", temp)
+                        .putFloat("tempC", celsius)   // the source value: the unit is applied when it is shown
+                        .putFloat("temp", toUnit(celsius))
                         .putInt("code", current.optInt("weather_code", -1))
                         .putInt("day", current.optInt("is_day", 1))
                         .putLong("at", System.currentTimeMillis())
@@ -75,6 +77,15 @@ final class Weather {
                 fetching = false;
             }
         }, "weather").start();
+    }
+
+    /** A temperature in Celsius, in the unit the person chose ("C" or "F"). */
+    static float toUnit(float celsius, String unit) {
+        return "F".equals(unit) ? celsius * 9f / 5f + 32f : celsius;
+    }
+
+    private static float toUnit(float celsius) {
+        return toUnit(celsius, Prefs.temperature());
     }
 
     private static String url() {

@@ -32,8 +32,10 @@ import java.util.Locale;
 public class SettingsActivity extends Activity {
     /** The system's own dialog to choose the home screen. */
     static final int REQ_ROLE = 42;
-    /** The widget that asks for its own settings. */
+    /** The system's own widget picker. */
     static final int REQ_WIDGET = 45;
+    /** The widget's own settings screen (it answers with the widget id too: a request code of its own). */
+    static final int REQ_WIDGET_CONFIGURE = 46;
     private SettingsView view;
 
     @Override protected void onCreate(Bundle savedInstanceState) {
@@ -67,7 +69,15 @@ public class SettingsActivity extends Activity {
             AppLog.w("the picker answered: result=" + resultCode + " data=" + (data == null ? "none" : data.getData())
                     + " extra=" + extra);
             if (id == 0) id = extra;   // some systems answer with the id in the extra only
-            if (id != 0) Widgets.picked(this, REQ_WIDGET, id);
+            if (id != 0) Widgets.picked(this, REQ_WIDGET_CONFIGURE, id);
+            view.reload();
+            return;
+        }
+        if (requestCode == REQ_WIDGET_CONFIGURE) {
+            // The widget's own settings are done. Its answer carries the widget id too, but this is not the
+            // picker: it must not open the settings again.
+            if (resultCode == RESULT_OK) Widgets.done(this, Prefs.widgetId());
+            else Widgets.remove(this);
             view.reload();
             return;
         }
@@ -111,13 +121,9 @@ public class SettingsActivity extends Activity {
         super.onPause();
     }
 
-    /** Back on a checklist: go back to the list. */
+    /** Back on a checklist: go back to the list (and to the top of it). */
     @Override public void onBackPressed() {
-        if (view.screen != 0) {
-            view.screen = 0;
-            view.invalidate();
-            return;
-        }
+        if (view.goBack()) return;
         super.onBackPressed();
     }
 
@@ -155,10 +161,10 @@ public class SettingsActivity extends Activity {
         static final int HOME = 0, ON_SCREEN = 1, AREAS_ROW = 2, VAULT = 3, NOTE_FOLDER = 4, TODAY_NOTE = 5,
                 VAULT_SEARCH = 6, WEATHER = 7, WIDGET = 8, WIDGET_SIZE = 9, SYNC = 10, SPACE_ROW = 11,
                 PANEL_ROW = 12, GAIN_ROW = 13, TALKERS_ROW = 14, UPDATES_ROW = 15, EXPORT = 16, OFF = 17,
-                LANGUAGE = 18, THEME = 19, ABOUT = 20;
+                LANGUAGE = 18, THEME = 19, GUIDE = 20, ABOUT = 21;
         static final int[] ROWS = {HOME, ON_SCREEN, AREAS_ROW, VAULT, NOTE_FOLDER, TODAY_NOTE, VAULT_SEARCH, WEATHER,
                 WIDGET, WIDGET_SIZE, SYNC, SPACE_ROW, PANEL_ROW, GAIN_ROW, TALKERS_ROW, UPDATES_ROW, EXPORT, OFF,
-                LANGUAGE, THEME, ABOUT};
+                LANGUAGE, THEME, GUIDE, ABOUT};
 
         SettingsView(Activity a) {
             super(a);
@@ -246,6 +252,7 @@ public class SettingsActivity extends Activity {
                 case OFF: return Ui.tr("Apps para desligar", "Apps to turn off");
                 case LANGUAGE: return Ui.tr("Idioma", "Language");
                 case THEME: return Ui.tr("Tema", "Theme");
+                case GUIDE: return Ui.tr("Primeiros passos", "First steps");
                 default: return Ui.tr("Sobre", "About");
             }
         }
@@ -257,8 +264,12 @@ public class SettingsActivity extends Activity {
                         ? Ui.tr("Free My Tablet", "Free My Tablet")
                         : Ui.tr("Original", "Original");
                 case ON_SCREEN: return Ui.tr("Escolher", "Choose");
-                case AREAS_ROW: return Prefs.areas().isEmpty() ? Ui.tr("Criar", "Create")
-                        : Prefs.areas().size() + Ui.tr(" áreas", " areas");
+                case AREAS_ROW: {
+                    int count = Prefs.areas().size();
+                    return count == 0 ? Ui.tr("Criar", "Create")
+                            : count == 1 ? Ui.tr("1 área", "1 area", "1 área")
+                            : count + Ui.tr(" áreas", " areas", " áreas");
+                }
                 case VAULT: return Vault.ready(activity) ? Ui.tr("Escolhida", "Chosen") : Ui.tr("Escolher", "Choose");
                 case NOTE_FOLDER: return Prefs.noteFolder().isEmpty() ? Ui.tr("A raiz do vault", "The vault root")
                         : Prefs.noteFolder();
@@ -287,6 +298,7 @@ public class SettingsActivity extends Activity {
                     return "light".equals(t) ? Ui.tr("Claro", "Light") : "dark".equals(t) ? Ui.tr("Escuro", "Dark")
                             : "read".equals(t) ? Ui.tr("Leitura", "Reading") : Ui.tr("Automático", "Automatic");
                 }
+                case GUIDE: return Ui.tr("Ver", "Show");
                 default: return "";
             }
         }
@@ -337,7 +349,7 @@ public class SettingsActivity extends Activity {
             c.drawText(screen == MAIN ? Ui.tr("Free My Tablet", "Free My Tablet") : title(), dp(20), dp(44), title);
             for (int i = 0; i < rows.size(); i++) {
                 float y = top + i * rowH - scroll;
-                if (y < top - rowH || y > bottom) continue;
+                if (y < dp(36) || y > bottom) continue;   // a row never runs into the title above it
                 float line = y + rowH - dp(8);
                 panel.setColor(0x22FFFFFF);
                 tmp.set(dp(20), line - dp(1), w - dp(20), line + dp(1));
@@ -404,7 +416,7 @@ public class SettingsActivity extends Activity {
             float y = top - scroll;
             for (String line : spaceLines) {
                 // Only the lines that are on the screen are drawn (the list can be long).
-                if (y > bottom + rowH || y + rowH < top) { y += rowH; continue; }
+                if (y < dp(36) || y > bottom + rowH) { y += rowH; continue; }   // a row never runs into the title
                 rowTitle.setColor(0xFFFFFFFF);
                 c.drawText(line, dp(20), y + dp(30), rowTitle);
                 y += rowH;
@@ -417,7 +429,7 @@ public class SettingsActivity extends Activity {
             c.drawText(Ui.tr("O que o Free My Tablet ganhou", "What Free My Tablet gained"), dp(20), dp(44), title);
             float y = top - scroll;
             for (String line : gainLines) {
-                if (y > bottom + rowH || y + rowH < top) { y += rowH; continue; }
+                if (y < dp(36) || y > bottom + rowH) { y += rowH; continue; }   // a row never runs into the title
                 rowTitle.setColor(0xFFFFFFFF);
                 c.drawText(line, dp(20), y + dp(30), rowTitle);
                 y += rowH;
@@ -490,7 +502,7 @@ public class SettingsActivity extends Activity {
             c.drawText(Ui.tr("Áreas de trabalho", "Work areas"), dp(20), dp(44), title);
             float y = top - scroll;
             for (String line : areaLines) {
-                if (y > bottom + rowH || y + rowH < top) { y += rowH; continue; }
+                if (y < dp(36) || y > bottom + rowH) { y += rowH; continue; }   // a row never runs into the title
                 rowTitle.setColor(0xFFFFFFFF);
                 c.drawText(line, dp(20), y + dp(30), rowTitle);
                 y += rowH;
@@ -631,7 +643,7 @@ public class SettingsActivity extends Activity {
             c.drawText(title(), dp(20), dp(44), title);
             float y = top - scroll;
             for (HomeApps.Item item : apps) {
-                if (y > bottom + rowH || y + rowH < top) { y += rowH; continue; }
+                if (y < dp(36) || y > bottom + rowH) { y += rowH; continue; }   // a row never runs into the title
                 boolean on = picked.contains(item.pkg);
                 rowTitle.setColor(0xFFFFFFFF);
                 c.drawText(item.label, dp(20) + dp(34), y + dp(30), rowTitle);
@@ -673,10 +685,10 @@ public class SettingsActivity extends Activity {
                 case MotionEvent.ACTION_UP: {
                     if (Math.abs(e.getY() - downY) > dp(12)) return true;   // it was a scroll
                     if (screen == MAIN) tapMain(e.getY());
-                    else if (screen == SPACE) tapSpace((int) ((e.getY() + scroll - top + rowH / 2) / rowH));
-                    else if (screen == TALKERS) tapTalker((int) ((e.getY() + scroll - top + rowH / 2) / rowH));
-                    else if (screen == UPDATES) tapUpdate((int) ((e.getY() + scroll - top + rowH / 2) / rowH));
-                    else if (screen == AREAS) tapArea((int) ((e.getY() + scroll - top + rowH / 2) / rowH));
+                    else if (screen == SPACE) tapSpace((int) ((e.getY() + scroll - top) / rowH));
+                    else if (screen == TALKERS) tapTalker((int) ((e.getY() + scroll - top) / rowH));
+                    else if (screen == UPDATES) tapUpdate((int) ((e.getY() + scroll - top) / rowH));
+                    else if (screen == AREAS) tapArea((int) ((e.getY() + scroll - top) / rowH));
                     else if (screen == GAIN) { /* this screen is only read */ }
                     else tapChecklist(e.getY());
                     return true;
@@ -703,7 +715,7 @@ public class SettingsActivity extends Activity {
         private float downY, lastY;
 
         private void tapMain(float y) {
-            int index = (int) ((y + scroll - top + rowH / 2) / rowH);
+            int index = (int) ((y + scroll - top) / rowH);
             if (index < 0 || index >= rows.size()) return;
             switch (ROWS[index]) {
                 case HOME: askSwitch(); break;
@@ -729,6 +741,7 @@ public class SettingsActivity extends Activity {
                 case OFF: openChecklist(OFF_APPS); break;
                 case LANGUAGE: askLanguage(); break;
                 case THEME: askTheme(); break;
+                case GUIDE: Guide.show(activity, false); break;
                 default: askAbout(); break;
             }
         }
@@ -979,17 +992,43 @@ public class SettingsActivity extends Activity {
         private void tapSpace(int index) {
             int total = spaceLines.size();
             int first = total - 2;
-            if (index != first && index != first + 1) return;
+            if (index == first) {
+                cleanSpace(true);
+            } else if (index == first + 1) {
+                askClearData();
+            }
+        }
+
+        /** "Clear the data of the apps that are off" is not undoable: ask first, and only for our own apps. */
+        private void askClearData() {
+            new AlertDialog.Builder(activity)
+                    .setTitle(Ui.tr("Apagar os dados dos apps desligados?", "Erase the data of the apps that are off?"))
+                    .setMessage(Ui.tr("Isto apaga os dados dos apps que o Free My Tablet desligou (as contas, "
+                                    + "os ajustes e os arquivos deles). Não dá para desfazer.\n\n"
+                                    + "Os apps que você mesmo desativou ficam de fora.",
+                            "This erases the data of the apps Free My Tablet turned off (their accounts, "
+                                    + "settings and files). It cannot be undone.\n\n"
+                                    + "Apps you disabled yourself are left alone."))
+                    .setNegativeButton(Ui.tr("Cancelar", "Cancel"), null)
+                    .setPositiveButton(Ui.tr("Apagar", "Erase"), (d, w) -> cleanSpace(false))
+                    .show();
+        }
+
+        /** Clears the cache (true) or the data of the apps we turned off (false). */
+        private void cleanSpace(boolean cache) {
             new Thread(() -> {
                 String message;
                 try (Adb adb = Adb.connect(activity, 30_000, null)) {
                     long before = Space.free(adb)[0];
-                    if (index == first) {
+                    if (cache) {
                         Space.trimCaches(adb);
                         message = Ui.tr("Cache limpo.", "Cache cleared.");
                     } else {
-                        int done = Space.clearTurnedOff(adb, Space.turnedOff(adb));
-                        message = Ui.tr(done + " apps limpos.", done + " apps cleared.");
+                        List<String> ours = new ArrayList<>();
+                        for (String pkg : Space.turnedOff(adb)) if (HomeMode.managed(pkg)) ours.add(pkg);
+                        int done = Space.clearTurnedOff(adb, ours);
+                        message = Ui.tr(done + " apps limpos.", done + " apps cleared.",
+                                done + " apps limpiadas.");
                     }
                     // How much space it freed: the "gain" screen shows it.
                     long after = Space.free(adb)[0];
@@ -1013,18 +1052,21 @@ public class SettingsActivity extends Activity {
                 notice(Ui.tr("Escolha a pasta do Obsidian primeiro.", "Choose the Obsidian folder first."));
                 return;
             }
-            String file = Ui.tr("Nota rápida ", "Quick note ")
-                    + new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(new java.util.Date())
-                    + ".md";
-            String folder = Prefs.noteFolder();
-            String path = folder.isEmpty() ? file : folder + "/" + file;
-            Intent intent = new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(Vault.obsidianUri(vault, path)));
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            try {
-                activity.startActivity(intent);
-            } catch (RuntimeException e) {
-                notice(Ui.tr("Não consegui abrir o Obsidian.", "I couldn't open Obsidian."));
-            }
+            // The file has to exist before the Obsidian opens it; its name may be the one of an older language.
+            new Thread(() -> {
+                String path = Vault.todayPath(activity);
+                Vault.ensure(activity, path, "# " + Ui.date(System.currentTimeMillis()) + "\n\n");
+                Intent intent = new Intent(Intent.ACTION_VIEW,
+                        android.net.Uri.parse(Vault.obsidianUri(vault, path)));
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                activity.runOnUiThread(() -> {
+                    try {
+                        activity.startActivity(intent);
+                    } catch (RuntimeException e) {
+                        notice(Ui.tr("Não consegui abrir o Obsidian.", "I couldn't open Obsidian."));
+                    }
+                });
+            }, "today-note").start();
         }
 
         /** The folder inside the vault where the quick note goes. */
@@ -1064,9 +1106,22 @@ public class SettingsActivity extends Activity {
                             Ui.tr("Ler do vault (restaurar)", "Read from the vault (restore)")},
                             (d, which) -> {
                                 if (which == 0) exportChoices();
-                                else restoreChoices();
+                                else askRestore();
                             })
                     .setNegativeButton(Ui.tr("Cancelar", "Cancel"), null)
+                    .show();
+        }
+
+        /** Restoring replaces the choices: ask before, and say what changes (the notes are not touched). */
+        private void askRestore() {
+            new AlertDialog.Builder(activity)
+                    .setTitle(Ui.tr("Restaurar as escolhas?", "Restore the choices?"))
+                    .setMessage(Ui.tr("Isto troca os apps da tela, as áreas de trabalho, o tema, o idioma, o widget "
+                                    + "e as pastas pelas escolhas salvas no vault. As notas não são tocadas.",
+                            "This replaces the apps on the home screen, the work areas, the theme, the language, the "
+                                    + "widget and the folders with the choices saved in the vault. The notes are not touched."))
+                    .setNegativeButton(Ui.tr("Cancelar", "Cancel"), null)
+                    .setPositiveButton(Ui.tr("Restaurar", "Restore"), (d, w) -> restoreChoices())
                     .show();
         }
 
@@ -1155,9 +1210,11 @@ public class SettingsActivity extends Activity {
             new AlertDialog.Builder(activity)
                     .setTitle(Ui.tr("Sincronizar", "Sync"))
                     .setMessage(Ui.tr("A pasta do git é a de trabalho no Termux. Depois do pull, os arquivos são "
-                                    + "copiados por cima da pasta que o Obsidian lê (o .git e o .obsidian ficam).",
+                                    + "copiados por cima da pasta que o Obsidian lê (o .git e o .obsidian ficam). "
+                                    + "As notas feitas no Obsidian não são apagadas.",
                             "The git folder is the working one in Termux. After the pull, the files are copied over "
-                                    + "the folder Obsidian reads (the .git and .obsidian are kept)."))
+                                    + "the folder Obsidian reads (the .git and .obsidian are kept). "
+                                    + "The notes made in Obsidian are not deleted."))
                     .setView(box)
                     .setNegativeButton(Ui.tr("Cancelar", "Cancel"), null)
                     .setPositiveButton("OK", (d, w) -> {
@@ -1168,7 +1225,7 @@ public class SettingsActivity extends Activity {
         }
 
         private void tapChecklist(float y) {
-            int index = (int) ((y + scroll - top + rowH / 2) / rowH);
+            int index = (int) ((y + scroll - top) / rowH);
             if (index < 0 || index >= apps.size()) return;
             String pkg = apps.get(index).pkg;
             if (picked.contains(pkg)) picked.remove(pkg); else picked.add(pkg);
@@ -1278,6 +1335,7 @@ public class SettingsActivity extends Activity {
             new AlertDialog.Builder(activity).setTitle(Ui.tr("Idioma", "Language"))
                     .setItems(names, (d, which) -> {
                         Prefs.setLanguage(options[which]);
+                        NotesWidget.refresh(activity);   // the widget is in the main process: it has its own copy of the texts
                         activity.recreate();
                     }).show();
         }
@@ -1303,7 +1361,9 @@ public class SettingsActivity extends Activity {
                     .setMessage(Ui.tr("Versão " + version + ".\nUm Início leve, sem propaganda, para o seu tablet.\n\n"
                                     + "Nada é desinstalado: um botão devolve tudo.",
                             "Version " + version + ".\nA light home screen, with no ads, for your tablet.\n\n"
-                                    + "Nothing is uninstalled: one button brings everything back."))
+                                    + "Nothing is uninstalled: one button brings everything back.",
+                            "Versión " + version + ".\nUna pantalla de inicio leve, sin anuncios, para tu "
+                                    + "tablet.\n\nNada se desinstala: un botón lo devuelve todo."))
                     .setPositiveButton("OK", null).show();
         }
 

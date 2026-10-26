@@ -45,9 +45,10 @@ final class Widgets {
 
     /**
      * The person picked a widget: the system already bound it. When the widget wants its own settings (the city of
-     * a clock widget, for instance), the system asks for them.
+     * a clock widget, for instance), the system asks for them — with a different request code, so the answer is
+     * not mistaken for another pick.
      */
-    static void picked(Activity a, int requestCode, int id) {
+    static void picked(Activity a, int configureCode, int id) {
         if (id == 0) return;
         Prefs.setWidgetId(id);
         AppWidgetProviderInfo info = AppWidgetManager.getInstance(a).getAppWidgetInfo(id);
@@ -60,7 +61,7 @@ final class Widgets {
         intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id);
         intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER, info.provider);
         try {
-            a.startActivityForResult(intent, requestCode);
+            a.startActivityForResult(intent, configureCode);
         } catch (RuntimeException e) {
             AppLog.w("could not open the settings of the widget: " + e.getMessage());
             done(a, id);

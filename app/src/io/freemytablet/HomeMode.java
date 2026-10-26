@@ -57,7 +57,6 @@ final class HomeMode {
         "com.sec.android.app.samsungapps",        // Galaxy Store
         "com.sec.android.widgetapp.samsungapps",  // Galaxy Store (the widget)
         "com.samsung.android.themecenter",        // Galaxy Themes
-        "com.samsung.android.app.clockpackage",   // Samsung Clock (the widget; the system's clock stays)
         "com.samsung.android.stickercenter",      // Sticker Center (the emoji pack)
         "com.samsung.android.smartswitchassistant",  // Smart Switch (moving data from the old phone)
         "com.samsung.android.rubin.app",          // Customization Service
@@ -98,7 +97,6 @@ final class HomeMode {
         "com.samsung.android.app.shealth",             // Samsung Health
         "com.google.android.tts",                      // the text-to-speech engine (560 MB here)
         "com.google.android.apps.maps",                // Google Maps (preinstalled)
-        "com.sec.android.daemonapp",                   // Samsung Weather
         "com.samsung.android.app.arzone",              // AR Zone
         "com.samsung.android.aremoji",                 // AR Emoji
         "com.samsung.android.app.gamehome",            // Game Launcher
@@ -396,11 +394,10 @@ final class HomeMode {
     private static List<String> turnAppsOn(Context c, Adb adb) throws IOException {
         JSONObject s = state(c);
         String home = originalHome(s);
+        // Everything we may have turned off: the recorded ones and the current lists (the optional apps the
+        // person marked are in the lists, not always in the recorded state).
         Set<String> toEnable = new HashSet<>(stringList(s, "disabled"));
-        for (String pkg : targets(home, true)) {
-            if (!Arrays.asList(DEBLOAT).contains(pkg) && !Arrays.asList(ASSISTANT).contains(pkg)
-                    && !Arrays.asList(OPTIONAL).contains(pkg)) toEnable.add(pkg);
-        }
+        toEnable.addAll(targets(home, true));
         Set<String> present = packages(adb, "");
         int done = 0;
         List<String> failed = new ArrayList<>();
@@ -543,6 +540,16 @@ final class HomeMode {
     }
 
     /**
+     * Whether the app was turned off by the lists of Free My Tablet. The "Space" screen only clears the data
+     * of these: an app the person disabled by hand is not ours to erase.
+     */
+    static boolean managed(String pkg) {
+        return Arrays.asList(DEBLOAT).contains(pkg)
+                || Arrays.asList(OPTIONAL).contains(pkg)
+                || (Config.DISABLE_ASSISTANT && Arrays.asList(ASSISTANT).contains(pkg));
+    }
+
+    /**
      * Applies right away the optional apps the person just chose: the ones they marked are turned off, the others
      * are turned back on. It runs in a thread and needs the tablet's ADB (the port has to be open).
      */
@@ -552,21 +559,50 @@ final class HomeMode {
             try (Adb adb = Adb.connect(app, 20_000, null)) {
                 Set<String> off = new HashSet<>(optionalOff());
                 Set<String> present = packages(adb, "");
-                Set<String> disabled = packages(adb, "-d");
-                int turned = 0;
+                Set<String> disabledNow = packages(adb, "-d");
+                // Turning off an app that saved the Wi-Fi network deletes the network: leave those alone.
+                Set<String> owners = wifiOwners(adb);
+                JSONObject s = state(app);
+                Set<String> recorded = new HashSet<>(stringList(s, "disabled"));
+                int turned = 0, kept = 0;
                 for (String pkg : OPTIONAL) {
                     if (!present.contains(pkg)) continue;
                     boolean shouldBeOff = off.contains(pkg);
-                    boolean isOff = disabled.contains(pkg);
-                    if (shouldBeOff == isOff) continue;
+                    boolean isOff = disabledNow.contains(pkg);
+                    // The state has to match the tablet: "Original" reads it to know what to turn back on.
+                    if (shouldBeOff == isOff) {
+                        if (isOff) recorded.add(pkg); else recorded.remove(pkg);
+                        continue;
+                    }
+                    if (shouldBeOff && (PROTECTED.contains(pkg) || owners.contains(pkg))) {
+                        kept++;
+                        continue;
+                    }
                     String out = adb.shell((shouldBeOff ? "pm disable-user --user 0 " : "pm enable ") + pkg);
-                    if (out.contains("disabled-user") || out.contains("new state: enabled")) turned++;
-                    else AppLog.w("could not change " + pkg + ": " + out.trim());
+                    if (out.contains("disabled-user")) {
+                        recorded.add(pkg);
+                        turned++;
+                    } else if (out.contains("new state: enabled")) {
+                        recorded.remove(pkg);
+                        turned++;
+                    } else {
+                        AppLog.w("could not change " + pkg + ": " + out.trim());
+                    }
                 }
-                notice(app, turned == 0
+                JSONObject latest = state(app);
+                latest.put("disabled", new JSONArray(sorted(recorded)));
+                save(app, latest);
+                String message = turned == 0
                         ? Ui.tr("Os apps que você marcou estão assim.", "The apps you marked are like that.")
-                        : Ui.tr(turned + " apps desligados (ou religados).", turned + " apps turned off (or back on).")
-                        );
+                        : Ui.tr(turned + " apps desligados (ou religados).",
+                                turned + " apps turned off (or back on).",
+                                turned + " apps desactivadas (o reactivadas).");
+                if (kept > 0) {
+                    message += Ui.tr(" " + kept + " ficaram como estavam (desligá-los apagaria o Wi-Fi salvo).",
+                            " " + kept + " stayed as they were (turning them off would erase the saved Wi-Fi).",
+                            " " + kept + " quedaron como estaban (desactivarlas borraría el Wi-Fi guardado).");
+                }
+                notice(app, message);
             } catch (Exception e) {
                 notice(app, Ui.tr("Não consegui mudar os apps: o ADB do tablet não está aberto "
                                 + "(\"adb tcpip 5555\" pelo computador).",

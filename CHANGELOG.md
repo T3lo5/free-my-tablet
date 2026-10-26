@@ -2,6 +2,71 @@
 
 Everything that changed, newest first.
 
+## v1.17
+
+- **The quick note stopped erasing the day's earlier notes.** The file of the day was opened in a mode that
+  truncated it: every note replaced the ones before. Now an existing file is opened in append mode (and, on a
+  folder provider that does not support it, read and written again with the new note at the end).
+- **The sync no longer empties the vault.** It used to delete everything in the Obsidian folder before copying
+  the repo over it — including the notes made on the tablet. Now it keeps a manifest of what it copied and
+  deletes only the files that the repo itself no longer has. The notes and the attachments made in Obsidian stay.
+  And an empty listing (a broken `find`, not an empty repo) now stops the sync instead of deleting the vault.
+- **The sync no longer says "the Termux refused" when it worked.** The old log was deleted after the script
+  started, so a fast run could lose its own log. The log is deleted before the run and carries a mark of that
+  run; only the matching log is accepted.
+- **The files of the sync are hidden from git.** The script, the log and the manifest live in the vault (the
+  only place the app and Termux both reach); they are now added to the local exclude of the vault and of the
+  working folder, so they do not show up as untracked notes.
+- **The search opens the app it shows.** The grid drew the filtered list, but the tap used the index of the whole
+  list: searching for "camera" and tapping the first result opened another app.
+- **"Clear the data of the apps that are off" asks first**, and only touches the apps Free My Tablet itself
+  turned off. Apps disabled by hand are left alone. (The data of an app cannot be brought back.)
+- **The reading mode survives closing the app drawer.** The drawer's callback made the note and the widget
+  visible again without checking the theme.
+- **The widgets keep updating after the home screen is paused.** The app stopped listening to the system on
+  pause and never started again: a clock widget would freeze after the first time the screen went away.
+- **Back from a long settings screen returns to the top of the list**, instead of leaving it scrolled past the
+  end.
+- **The optional apps come back with "Original".** Turning one off after entering Free My Tablet did not record
+  it in the switch state; turning them off also skipped the check that protects the app that saved the Wi-Fi
+  network (disabling it would erase the saved networks).
+- **The note of the day keeps its name when the language changes.** The prefix was translated, so the same day
+  had a note in each language. The prefix is now kept in the settings; an existing note of the day with the old
+  name is reused. "Open today's note" in the settings also creates the file before opening Obsidian.
+- **A widget that has its own settings no longer reopens them forever**: the configuration screen has a request
+  code of its own, so its answer is not mistaken for another pick.
+- **The backup brings the whole home screen back**: the work areas, the size of the widget and the prefix of
+  the note of the day were left out of the file. Now they are saved too, as well as the temperature unit, the
+  recent apps and a list of optional apps that is empty ("none off").
+- **Restoring the choices asks first**, and says that the notes are not touched.
+- **The notes widget sees a note saved on the home screen.** The widget lives in the main process and the note
+  is saved in the home one: the home now tells the main process, which forgets its copy and redraws.
+- **The widget follows the language of the app.** Its title, "today"/"yesterday" and the footer came from the
+  Android resources (always Portuguese, whatever the app's language); now they use the same text as the rest of
+  the app, and the widget rereads the language when it is built (the main process could be older than the choice).
+- **With no widget, the home screen uses the space.** The empty slot no longer leaves a band between the clock
+  and the apps.
+- **The tabs of the work areas no longer sit on the first row of apps.**
+- **The search box no longer shows the typed text twice.** The box itself draws the text; the canvas only
+  draws the hint while it is empty.
+- **The apps opened lately show up on the first opening** of the complete list.
+- **Changing the temperature unit shows the right number at once**: the value is kept in Celsius and converted
+  when it is drawn, instead of keeping the number already converted.
+- **The card no longer disappears at 0 °C.** The "nothing fetched yet" sentinel was the same 0, so a real zero
+  hid the weather; the card now checks whether there was ever a fetch.
+- **A second tap on "Sync" no longer overwrites the script of the running sync** (and the first waiter no longer
+  reports that Termux refused). The button says the sync is already running until the log comes back.
+- **The Spanish covers the whole app**: the 148 strings drawn by the custom UI that were still in English (the
+  settings, the space and panel screens, the update messages, the sync errors, the restore dialog) have their
+  Spanish now. The dynamic messages (how many apps were turned off, how many stayed, how many were cleaned) have
+  the Spanish in the call itself.
+- **The first opening shows the three steps** (set Free My Tablet as the home screen, choose the Obsidian folder,
+  and where the app opens the settings), with a button that goes straight there. It is shown once; an update over
+  a working install does not show it. The steps can be read again from *Settings → First steps*.
+- The tests: 63 checks, including the sync script (it must not empty the vault, it stops on a broken `find`, it
+  hides its own files from git), the guide of the first opening, the name of the note of the day, the list of apps
+  whose data may be cleared, the Celsius/Fahrenheit conversion, the version comparison and a few Spanish strings.
+
 ## v1.16
 
 - **The search in the vault looks inside the notes**, not only at the name: it reads the text of the notes

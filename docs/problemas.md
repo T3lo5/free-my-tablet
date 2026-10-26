@@ -16,7 +16,7 @@ impossível não vira promessa, e o que não faz sentido para um launcher leve f
 | 1 | **A tela de Início redesenhava 60 vezes por segundo** para mostrar um gradiente parado | A tela só é desenhada quando há coisa nova: o relógio (1x por minuto), uma mensagem, uma animação | **37% → 0,0% de CPU** |
 | 2 | **A tela de Início era um grid com tudo** | Ficou o relógio, o tempo, os apps que a pessoa escolheu, a nota e um botão | 6 apps em vez de 30+ |
 | 3 | **302 apps de fábrica**, um deles com 1,7 GB (o diagnóstico da Samsung) | O switch desliga 10 de fábrica e deixa 12 opcionais à escolha | 10 apps desligados |
-| 4 | **Não tinha como escrever uma nota** sem abrir o Obsidian | A nota vai direto pro vault, em Markdown, um arquivo por dia | Salva e acumula |
+| 4 | **Não tinha como escrever uma nota** sem abrir o Obsidian | A nota vai direto pro vault, em Markdown, um arquivo por dia | Salva e acumula (o append foi corrigido na v1.17) |
 | 5 | **O git pull + a cópia eram na mão, no Termux** | Um botão faz os dois | Testado: "Already up to date" + cópia |
 | 6 | **Não tinha widget** | O slot do Início hospeda qualquer widget do sistema; o nosso mostra as últimas notas do vault | Funcionando |
 | 7 | **O cache e os dados dos apps desligados ficavam ocupando espaço** | A tela de Espaço limpa o cache de todos e o que sobrou dos desligados | **3,2 GB → 5,8 GB livres** |
@@ -48,6 +48,35 @@ impossível não vira promessa, e o que não faz sentido para um launcher leve f
 | 33 | **A tela de configurações redesenhava 60 vezes por segundo** (nada mudava nela) | Ela é desenhada só quando algo muda: 6% de um núcleo → quase nada | Medido |
 | 34 | **Não havia um único teste automático** | Um runner sem Gradle e sem JUnit (34 verificações da lógica pura), roda na CI antes de buildar | 34 verificações |
 | 35 | **Na gaveta de apps, o toque caía uma linha abaixo** (a fileira de "Recentes" empurrava a grade, o cálculo do toque não) | O desenho e o toque usam a mesma base; os "Recentes" viraram clicáveis | Corrigido |
+| 36 | **A nota do dia era truncada a cada nota nova** (o arquivo era aberto com `"rwt"`) | O arquivo existente é aberto em append (`"wa"`), com leitura + reescrita quando o provedor não aceita | Corrigido na v1.17 |
+| 37 | **O sync esvaziava o vault antes de copiar** (as notas feitas no Obsidian sumiam) | O script guarda um manifesto do que copiou e apaga só o que o repo não tem mais | Corrigido na v1.17 |
+| 38 | **O log do sync podia ser apagado logo depois de criado** (e o app dizia que o Termux recusou) | O log é apagado antes da execução e leva a marca (UUID) daquela execução | Corrigido na v1.17 |
+| 39 | **A busca abria o app errado** (a grade desenhava a lista filtrada, o toque usava a completa) | O desenho e o toque usam a mesma lista (`shown()`) | Corrigido na v1.17 |
+| 40 | **"Limpar os apps desligados" apagava dados sem perguntar** (e de qualquer app desativado) | Pede confirmação e só alcança os apps que o Free My Tablet desligou | Corrigido na v1.17 |
+| 41 | **O modo leitura quebrava ao fechar a gaveta** (nota e widget voltavam a aparecer) | O callback da gaveta chama `applyMode()` | Corrigido na v1.17 |
+| 42 | **Os widgets congelavam depois do primeiro pause** (o host parava de ouvir e nunca voltava) | `startListening()` também no `onResume` | Corrigido na v1.17 |
+| 43 | **Voltar de uma tela longa das configurações deixava a lista em branco** | O `onBackPressed` usa o `goBack()`, que zera a rolagem | Corrigido na v1.17 |
+| 44 | **Os apps opcionais não voltavam no "Original"** (e desligá-los ignorava o Wi-Fi salvo) | O estado `disabled` é gravado no `applyOptional`; o `turnAppsOn` religa as listas; a checagem de Wi-Fi entrou | Corrigido na v1.17 |
+| 45 | **A nota do dia mudava de nome com o idioma** (duas notas no mesmo dia) | O prefixo fica em `Prefs.notePrefix`; a nota que já existe é reaproveitada | Corrigido na v1.17 |
+| 46 | **Widget com configuração própria reabria a configuração para sempre** | O seletor e a configuração usam request codes diferentes | Corrigido na v1.17 |
+| 47 | **"Abrir a nota de hoje" nas configurações não criava o arquivo** (o Obsidian abria outra nota) | O caminho e o `ensure` rodam antes de abrir, como na tela de início | Corrigido na v1.17 |
+| 48 | **Os apps recentes não apareciam na primeira abertura da gaveta** (a lista completa só era montada depois) | O `setAllApps` vem antes de `recentItems()` no `reload` | Corrigido na v1.17 |
+| 49 | **Sem widget, a tela de início deixava uma faixa vazia no lugar dele** | O slot tem altura 0 quando não há widget | Corrigido na v1.17 |
+| 50 | **As abas das áreas de trabalho ficavam por cima da primeira fileira de apps** | A fileira começa abaixo das abas (`favoritesTop()`), no desenho e no toque | Corrigido na v1.17 |
+| 51 | **A busca mostrava o texto digitado duas vezes** (o canvas desenhava o filtro e o campo também) | O canvas desenha só o placeholder quando o campo está vazio | Corrigido na v1.17 |
+| 52 | **O widget de notas não via a nota salva na tela de início** (processos diferentes, cache próprio) | O `:home` avisa o processo principal por broadcast; o widget invalida o cache e redesenha | Corrigido na v1.17 |
+| 53 | **O backup deixava de fora as áreas, o widget, a unidade e o prefixo** | O backup v2 inclui tudo, inclusive listas vazias e os recentes | Corrigido na v1.17 |
+| 54 | **Restaurar as escolhas sobrescrevia tudo sem avisar** | Pede confirmação e diz que as notas não são tocadas | Corrigido na v1.17 |
+| 55 | **Trocar a unidade de temperatura mostrava o número antigo até a próxima consulta** | O valor é guardado em Celsius e convertido na hora de mostrar | Corrigido na v1.17 |
+| 56 | **O cartão do tempo sumia quando fazia 0 °C** (o "nada ainda" e o zero eram o mesmo valor) | O cartão checa se já houve consulta (`Weather.at`), não se a temperatura é zero | Corrigido na v1.17 |
+| 57 | **Dois toques em "Sincronizar" sobrescreviam o script da execução em andamento** | O botão ignora o segundo toque enquanto a sincronização não responde | Corrigido na v1.17 |
+| 58 | **O espanhol só cobria parte do app** (as telas de configurações, espaço, painel e atualizações ficavam em inglês) | As 148 frases que faltavam foram traduzidas; as mensagens com números levam o espanhol na própria chamada | Corrigido na v1.17 |
+| 59 | **A primeira abertura não dizia o que fazer** (virar o Início e escolher a pasta do Obsidian) | Um guia de três passos, mostrado uma vez, com o botão que abre as configurações | Corrigido na v1.17 |
+| 60 | **Nas configurações, o toque caía uma linha abaixo** (o cálculo somava meia linha à posição desenhada) | O índice é o da linha desenhada, sem o deslocamento; a fileira não sobe por cima do título | Corrigido na v1.17 |
+| 61 | **Um `find` que falhasse esvaziava o vault** (lista vazia = tudo "sumiu do repo") | O script para com erro quando a listagem vem vazia, antes de apagar qualquer coisa | Corrigido na v1.17 |
+| 62 | **Os arquivos do sync apareciam como notas novas no git** (script, log e manifesto ficam no vault) | Eles entram no `exclude` local do vault e da pasta de trabalho, sem tocar no `.gitignore` versionado | Corrigido na v1.17 |
+| 63 | **O guia da primeira abertura só aparecia uma vez** (quem esqueceu não tinha como reler) | A linha *Primeiros passos* nas configurações mostra o mesmo guia, sem o botão que abriria a própria tela | Corrigido na v1.17 |
+| 64 | **O widget continuava em português com o app em inglês ou espanhol** (os textos vinham dos recursos do Android, que só têm português) | "Últimas notas", "hoje/ontem" e o rodapé passam por `Ui.tr`; o widget relê o idioma ao ser montado, porque vive no processo principal | Corrigido na v1.17 |
 
 ---
 

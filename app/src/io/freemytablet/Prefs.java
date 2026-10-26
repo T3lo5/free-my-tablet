@@ -157,8 +157,18 @@ final class Prefs {
         list.remove(pkg);
         list.add(0, pkg);
         while (list.size() > 8) list.remove(list.size() - 1);
+        setRecent(list);
+    }
+
+    /** The recent apps, as they came from a backup (the order is kept, the limit is the same). */
+    static void setRecent(List<String> packages) {
         StringBuilder sb = new StringBuilder();
-        for (String p : list) sb.append(sb.length() == 0 ? "" : ",").append(p);
+        int n = 0;
+        for (String p : packages) {
+            if (p == null || p.isEmpty() || n >= 8) continue;
+            sb.append(sb.length() == 0 ? "" : ",").append(p);
+            n++;
+        }
         put("recent", sb.toString());
     }
 
@@ -167,6 +177,13 @@ final class Prefs {
     /** The folder inside the vault where the note goes ("" = the root of the vault). */
     static String noteFolder() { return sp().getString("noteFolder", ""); }
     static void setNoteFolder(String folder) { put("noteFolder", folder.trim()); }
+
+    /**
+     * The name the note of the day starts with ("Nota rápida "). Kept after the first save: changing the
+     * language must not move the day's notes to another file.
+     */
+    static String notePrefix() { return sp().getString("notePrefix", ""); }
+    static void setNotePrefix(String prefix) { put("notePrefix", prefix); }
 
     // MARK: - The work areas
 
@@ -217,6 +234,20 @@ final class Prefs {
     /** Which area is on the screen (-1 = the apps of the main row). */
     static int area() { return sp().getInt("area", -1); }
     static void setArea(int index) { put("area", index); }
+
+    // MARK: - The first opening
+
+    /** Whether the first-run guide (the three steps) was already shown. */
+    static boolean guideSeen() { return sp().getBoolean("guideSeen", false); }
+    static void setGuideSeen(boolean seen) { put("guideSeen", seen); }
+
+    /**
+     * The guide is for the first opening: once shown, never again — and not at all when the app is already the
+     * home screen and the vault is set (an update over an install that already works).
+     */
+    static boolean needsGuide(boolean seen, boolean home, boolean vault) {
+        return !seen && !(home && vault);
+    }
 
     // MARK: - The gains
 

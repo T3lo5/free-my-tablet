@@ -110,7 +110,8 @@ There is a short guide in Portuguese: [`docs/instalar.md`](docs/instalar.md).
 ## Settings
 
 The settings open from the app's icon (in *All apps*, the button at the bottom right of the home screen) or by
-**holding the empty part of the home screen**.
+**holding the empty part of the home screen**. On the first opening a guide shows the three steps (set it as the
+home screen, choose the Obsidian folder, and how to open the settings).
 
 | Where | What |
 |---|---|
@@ -126,11 +127,15 @@ The settings open from the app's icon (in *All apps*, the button at the bottom r
 | *Apps to turn off* | The preinstalled apps you never use (Bixby, Samsung Internet, the Play apps…) |
 | *Language* | Automatic, Português, English, Español |
 | *Theme* | Automatic (follows the sun), Light, Dark |
+| *First steps* | The three steps of the first opening, to read again |
 
 ### The sync
 
 The button at the bottom left does what you do by hand today: `git pull` in the working folder, then the copy
-over the folder Obsidian reads (the `.git` and the `.obsidian` stay). It needs two things, once:
+over the folder Obsidian reads (the `.git` and the `.obsidian` stay). It never empties the vault: the notes and
+the attachments you made in Obsidian stay, and only the files that the repo itself deleted are removed. If the
+pull comes back with nothing listed (a broken clone, not an empty repo), it stops before touching the vault. It
+needs two things, once:
 
 - the permission to run commands on Termux (the app asks the system, when you press the button the first time);
 - in Termux, one line:

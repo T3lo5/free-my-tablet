@@ -22,7 +22,7 @@ final class Backup {
     static String json(Context c) {
         JSONObject out = new JSONObject();
         try {
-            out.put("version", 1);
+            out.put("version", 2);
             out.put("favorites", new JSONArray(Prefs.favorites()));
             out.put("recent", new JSONArray(Prefs.recent()));
             out.put("theme", Prefs.theme());
@@ -31,8 +31,17 @@ final class Backup {
             out.put("syncFolder", Prefs.syncFolder());
             out.put("syncCommand", Prefs.syncCommand());
             out.put("noteFolder", Prefs.noteFolder());
+            out.put("notePrefix", Prefs.notePrefix());
+            out.put("widgetSize", Prefs.widgetSize());
+            out.put("temperature", Prefs.temperature());
             List<String> off = Prefs.optionalOff();
             out.put("appsOff", new JSONArray(off));
+            // The work areas are choices too: without them the home screen comes back with only the main row.
+            JSONArray areas = new JSONArray();
+            for (Prefs.Area area : Prefs.areas()) {
+                areas.put(new JSONObject().put("name", area.name).put("apps", new JSONArray(area.apps)));
+            }
+            out.put("areas", areas);
         } catch (Exception e) {
             AppLog.w("could not write the choices: " + e.getMessage());
         }
@@ -58,20 +67,43 @@ final class Backup {
             if (!theme.isEmpty()) Prefs.setTheme(theme);
             String language = in.optString("language", "");
             if (!language.isEmpty()) Prefs.setLanguage(language);
-            Prefs.setWeatherCard(in.optBoolean("weatherCard", true));
+            if (in.has("weatherCard")) Prefs.setWeatherCard(in.optBoolean("weatherCard", true));
             String folder = in.optString("syncFolder", "");
             if (!folder.isEmpty()) Prefs.setSyncFolder(folder);
             String command = in.optString("syncCommand", "");
             if (!command.isEmpty()) Prefs.setSyncCommand(command);
-            String note = in.optString("noteFolder", "");
-            if (!note.isEmpty()) Prefs.setNoteFolder(note);
-            List<String> off = strings(in.optJSONArray("appsOff"));
-            if (!off.isEmpty()) Prefs.setOptionalOff(off);
+            if (in.has("noteFolder")) Prefs.setNoteFolder(in.optString("noteFolder", ""));
+            String prefix = in.optString("notePrefix", "");
+            if (!prefix.isEmpty()) Prefs.setNotePrefix(prefix);
+            int widgetSize = in.optInt("widgetSize", 0);
+            if (widgetSize >= 80 && widgetSize <= 400) Prefs.setWidgetSize(widgetSize);
+            String temperature = in.optString("temperature", "");
+            if ("C".equals(temperature) || "F".equals(temperature) || "auto".equals(temperature)) {
+                Prefs.setTemperature(temperature);
+            }
+            // The choice may be "none off": an empty list has to clear the old one, not be ignored.
+            if (in.has("appsOff")) Prefs.setOptionalOff(strings(in.optJSONArray("appsOff")));
+            if (in.has("recent")) Prefs.setRecent(strings(in.optJSONArray("recent")));
+            if (in.has("areas")) Prefs.setAreas(areas(in.optJSONArray("areas")));
             return true;
         } catch (Exception e) {
             AppLog.w("could not read the choices: " + e.getMessage());
             return false;
         }
+    }
+
+    /** The work areas of the backup file. */
+    private static List<Prefs.Area> areas(JSONArray list) {
+        List<Prefs.Area> out = new java.util.ArrayList<>();
+        if (list == null) return out;
+        for (int i = 0; i < list.length(); i++) {
+            JSONObject one = list.optJSONObject(i);
+            if (one == null) continue;
+            Prefs.Area area = new Prefs.Area(one.optString("name", ""));
+            area.apps.addAll(strings(one.optJSONArray("apps")));
+            out.add(area);
+        }
+        return out;
     }
 
     private static List<String> strings(JSONArray array) {

@@ -1,6 +1,7 @@
 package io.freemytablet;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.appwidget.AppWidgetHost;
 import android.appwidget.AppWidgetHostView;
 import android.appwidget.AppWidgetManager;
@@ -50,6 +51,7 @@ public class HomeActivity extends Activity {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private int lastNotices = -1;
     private boolean running;
+    private boolean syncing;              // the sync is running: a second tap would overwrite its script
     private int prefsVersion = Prefs.version;   // settings changed while we were away: read them again
     private String pendingNote = "";
 
@@ -149,10 +151,8 @@ public class HomeActivity extends Activity {
         home.onLongPress = () -> startActivity(new Intent(this, SettingsActivity.class));
         // A gaveta de apps é desenhada pelo canvas: o widget e o campo de nota ficariam por cima dela.
         home.onOverlayChanged = () -> {
-            boolean open = home.isOverlayOpen();
-            if (widgetView != null) widgetView.setVisibility(open ? View.GONE : View.VISIBLE);
-            note.setVisibility(open ? View.GONE : View.VISIBLE);
-            if (!open) hideSearch();
+            applyMode();   // also keeps the reading mode right after the drawer closes
+            if (!home.isOverlayOpen()) hideSearch();
         };
         home.onSearchTap = this::showSearch;
         home.onAreaTap = this::chooseArea;
@@ -179,13 +179,20 @@ public class HomeActivity extends Activity {
     }
 
     private void startSync() {
-        if (!Sync.start(this)) {
+        if (syncing) {
+            home.notice(Ui.tr("A sincronização já está rodando.", "The sync is already running."));
+            return;
+        }
+        String run = Sync.start(this);
+        if (run == null) {
             home.notice(Ui.tr("Não consegui escrever o script de sincronização na pasta do Obsidian.",
                     "I couldn't write the sync script in the Obsidian folder."));
             return;
         }
+        syncing = true;
         home.notice(Ui.tr("Sincronizando…", "Syncing…"));
-        Sync.waitForResult(this, (ok, text) -> runOnUiThread(() -> {
+        Sync.waitForResult(this, run, (ok, text) -> runOnUiThread(() -> {
+            syncing = false;
             if (ok) home.notice(Ui.tr("Sincronizado.", "Synced."));
             else home.notice(text.isEmpty()
                     ? Ui.tr("A sincronização não respondeu.", "The sync did not answer.")
@@ -233,16 +240,13 @@ public class HomeActivity extends Activity {
             home.notice(Ui.tr("Escolha a pasta do Obsidian primeiro.", "Choose the Obsidian folder first."));
             return;
         }
-        String file = Ui.tr("Nota rápida ", "Quick note ")
-                + new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(new java.util.Date())
-                + ".md";
-        String folder = Prefs.noteFolder();
-        final String path = folder.isEmpty() ? file : folder + "/" + file;
-        final Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(Vault.obsidianUri(vault, path)));
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         // The note of the day is made first: with a file that does not exist, the Obsidian opens another one.
+        // The name is looked for off the UI thread (the folder is on the disk).
         new Thread(() -> {
+            final String path = Vault.todayPath(this);
             Vault.ensure(this, path, "# " + Ui.date(System.currentTimeMillis()) + "\n\n");
+            final Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(Vault.obsidianUri(vault, path)));
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             runOnUiThread(() -> {
                 try {
                     startActivity(intent);
@@ -318,7 +322,7 @@ public class HomeActivity extends Activity {
             String file = Vault.save(this, text);
             runOnUiThread(() -> {
                 if (file == null) {
-                    home.notice(Ui.tr("Não consegui salvar a nota. See se a pasta do Obsidian ainda está lá.",
+                    home.notice(Ui.tr("Não consegui salvar a nota. Veja se a pasta do Obsidian ainda está lá.",
                             "I couldn't save the note. Check that the Obsidian folder is still there."));
                     return;
                 }
@@ -372,6 +376,8 @@ public class HomeActivity extends Activity {
 
     @Override protected void onResume() {
         super.onResume();
+        // onPause stopped it: without this the system stops sending the widgets' updates.
+        if (host != null) host.startListening();
         Weather.refresh(this);
         showWidget();
         checkForUpdates();
@@ -388,6 +394,23 @@ public class HomeActivity extends Activity {
         }
         running = true;
         handler.post(poll);
+        showGuide();
+    }
+
+    /**
+     * The first opening: the three steps that make the app the home screen and give it the Obsidian folder. It is
+     * shown once. When everything is already set (an update over a working install), it is not shown at all.
+     */
+    private void showGuide() {
+        if (home == null) return;
+        boolean homeNow = HomeMode.homeNow(this);
+        boolean ready = Vault.ready(this);
+        if (!Prefs.needsGuide(Prefs.guideSeen(), homeNow, ready)) {
+            if (!Prefs.guideSeen()) Prefs.setGuideSeen(true);   // already set up: nothing to tell
+            return;
+        }
+        Prefs.setGuideSeen(true);
+        Guide.show(this, true);
     }
 
     /**
@@ -471,8 +494,11 @@ public class HomeActivity extends Activity {
     private void applyMode() {
         boolean read = home != null && home.reading();
         boolean open = home != null && home.isOverlayOpen();
-        if (note != null) note.setVisibility(read || open ? View.GONE : View.VISIBLE);
-        if (widgetView != null) widgetView.setVisibility(read || open ? View.GONE : View.VISIBLE);
+        boolean show = !read && !open;
+        if (note != null) note.setVisibility(show ? View.VISIBLE : View.GONE);
+        if (widgetView != null) {
+            widgetView.setVisibility(show && Prefs.widgetId() != 0 ? View.VISIBLE : View.GONE);
+        }
     }
 
     private void showWidget() {

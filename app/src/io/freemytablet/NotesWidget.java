@@ -48,6 +48,9 @@ public class NotesWidget extends AppWidgetProvider {
     }
 
     private static RemoteViews views(Context c, AppWidgetManager manager, int id) {
+        // The widget lives in the main process, which started before the language of the settings may have
+        // changed: read it again on every build (the title, "today" and the footer follow the app, not the system).
+        Ui.applyLanguage();
         RemoteViews views = new RemoteViews(c.getPackageName(), R.layout.widget_notes);
         // The system draws the widget: the colors and the sizes go through the API, not through the layout.
         views.setTextColor(R.id.title, 0x99FFFFFF);
@@ -61,7 +64,7 @@ public class NotesWidget extends AppWidgetProvider {
         views.setTextViewTextSize(R.id.footer, android.util.TypedValue.COMPLEX_UNIT_SP, 12);
 
         List<Vault.Note> notes = Vault.notes(c);
-        views.setTextViewText(R.id.title, c.getString(R.string.widget_notes_title));
+        views.setTextViewText(R.id.title, Ui.tr("Últimas notas", "Recent notes", "Notas recientes"));
         // The title opens the vault itself.
         views.setOnClickPendingIntent(R.id.title, openVault(c));
 
@@ -78,12 +81,12 @@ public class NotesWidget extends AppWidgetProvider {
             }
         }
         if (notes.isEmpty()) {
-            views.setTextViewText(R.id.line1, c.getString(R.string.widget_notes_empty));
+            views.setTextViewText(R.id.line1, Ui.tr("Nenhuma nota ainda", "No notes yet", "Aún no hay notas"));
             views.setViewVisibility(R.id.line1, View.VISIBLE);
         }
         // The footer only appears when there is room for it.
         if (heightOf(c, manager, id) >= 200) {
-            views.setTextViewText(R.id.footer, c.getString(R.string.widget_notes_open));
+            views.setTextViewText(R.id.footer, Ui.tr("abrir o vault", "open the vault", "abrir el vault"));
             views.setOnClickPendingIntent(R.id.footer, openVault(c));
             views.setViewVisibility(R.id.footer, View.VISIBLE);
         } else {
@@ -116,15 +119,15 @@ public class NotesWidget extends AppWidgetProvider {
 
     /** The line of a note: when it was changed and where it is ("hoje · 00 - Painel/Home"). */
     private static String line(Context c, Vault.Note note) {
-        return when(c, note.modified) + " · " + shortTitle(note);
+        return when(note.modified) + " · " + shortTitle(note);
     }
 
     /** "hoje", "ontem" or "22/10" (when the note was changed). */
-    private static String when(Context c, long time) {
+    private static String when(long time) {
         if (time <= 0) return "";
         int days = daysAgo(System.currentTimeMillis(), time);
-        if (days == 0) return c.getString(R.string.widget_notes_today);
-        if (days == 1) return c.getString(R.string.widget_notes_yesterday);
+        if (days == 0) return Ui.tr("hoje", "today", "hoy");
+        if (days == 1) return Ui.tr("ontem", "yesterday", "ayer");
         return new SimpleDateFormat("dd/MM", Locale.getDefault()).format(new Date(time));
     }
 

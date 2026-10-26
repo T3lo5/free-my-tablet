@@ -163,6 +163,7 @@ public class HomeView extends View implements Choreographer.FrameCallback {
             post(() -> {
                 favorites.clear();
                 favorites.addAll(row);
+                setAllApps(all);   // before the recents: they are looked up in the whole list
                 recents.clear();
                 recents.addAll(recentItems());
                 layoutWidget();     // the size of the widget may have changed in the settings
@@ -170,7 +171,6 @@ public class HomeView extends View implements Choreographer.FrameCallback {
                 areaNames.add(Ui.tr("Início", "Home"));
                 for (Prefs.Area area : list) areaNames.add(area.name);
                 areaCurrent = (current >= 0 && current < list.size()) ? current + 1 : 0;
-                setAllApps(all);
                 layoutFavorites();
                 buildBackground();     // the theme may have changed in the settings
                 invalidate();
@@ -283,7 +283,8 @@ public class HomeView extends View implements Choreographer.FrameCallback {
     public void layoutWidget() {
         float pad = dp(portrait() ? 24 : 32);
         // The size the person chose, or the one the widget asks for when it is bigger (the widget is not cut).
-        int wh = Math.max(Prefs.widgetSize(), widgetHeight);
+        // With no widget there is no slot: the row of apps uses the space instead of leaving a blank band.
+        int wh = Prefs.widgetId() == 0 ? 0 : Math.max(Prefs.widgetSize(), widgetHeight);
         widgetRect.set(pad, dp(140), w - pad, dp(140) + dp(wh));
         widgetTold = wh;
     }
@@ -331,8 +332,8 @@ public class HomeView extends View implements Choreographer.FrameCallback {
     /** The weather card, at the top right: the symbol, the temperature and the city. */
     private void drawWeather(Canvas c) {
         if (!Prefs.weatherCard()) return;
+        if (Weather.at(context) == 0) return;   // nothing was fetched yet (0 °C is a real temperature)
         float temp = Weather.temperature(context);
-        if (temp == 0f) return;
         int code = Weather.code(context);
         String symbol = code < 0 ? "cloud" : Symbols.weather(code, Weather.day(context));
         float y = dp(portrait() ? 88 : 72);
@@ -365,7 +366,7 @@ public class HomeView extends View implements Choreographer.FrameCallback {
         drawAreas(c);
         if (favorites.isEmpty()) return;
         int rows = (int) Math.ceil(favorites.size() / (float) perRow);
-        float top = widgetRect.bottom + dp(16);
+        float top = favoritesTop();
         float bottom = noteTop - dp(24);
         float blockH = rows * rowH;
         float startY = top + Math.max(0, (bottom - top - blockH) / 2f);
@@ -403,6 +404,11 @@ public class HomeView extends View implements Choreographer.FrameCallback {
             x += tw + dp(8);
         }
         hint.setTextSize(dp(15));
+    }
+
+    /** Where the row of apps starts: under the widget, and under the tabs of the work areas when they exist. */
+    private float favoritesTop() {
+        return widgetRect.bottom + dp(16) + (areaNames.size() > 1 ? dp(32) : 0);
     }
 
     /** A tap on a tab of the areas: the person changes what is on the screen. */
@@ -526,8 +532,11 @@ public class HomeView extends View implements Choreographer.FrameCallback {
             c.drawBitmap(glass, null, iconRect, symbolPaint);
         }
         hint.setColor(0x99FFFFFF);
-        c.drawText(filter.isEmpty() ? Ui.tr("Buscar app", "Search an app") : filter,
-                searchRect.left + dp(42), searchRect.centerY() + dp(5), hint);
+        // The typed text is drawn by the EditText over this box; the canvas only draws the hint when it is empty.
+        if (filter.isEmpty()) {
+            c.drawText(Ui.tr("Buscar app", "Search an app"),
+                    searchRect.left + dp(42), searchRect.centerY() + dp(5), hint);
+        }
         float bottom = h - dp(24);
         // The apps opened lately, in a row on top.
         float recentH = 0;
@@ -545,7 +554,7 @@ public class HomeView extends View implements Choreographer.FrameCallback {
         float cell = Math.max(dp(72), iconSize + dp(34));
         int cols = Math.max(3, (int) ((w - dp(40)) / cell));
         float cellW = (w - dp(40)) / cols;
-        List<HomeApps.Item> all = filter.isEmpty() ? allApps : filtered;
+        List<HomeApps.Item> all = shown();
         int rows = (int) Math.ceil((double) all.size() / cols);
         float contentH = rows * cell;
         allMaxScroll = Math.max(0, contentH - (bottom - top));
@@ -576,6 +585,11 @@ public class HomeView extends View implements Choreographer.FrameCallback {
             if (filter.isEmpty() || item.label.toLowerCase(java.util.Locale.getDefault()).contains(filter)) filtered.add(item);
         }
         invalidate();
+    }
+
+    /** The apps the list shows now: the filtered ones while the person types, the whole list otherwise. */
+    private List<HomeApps.Item> shown() {
+        return filter.isEmpty() ? allApps : filtered;
     }
 
     /** The apps opened lately (the ones that are still installed). */
@@ -612,6 +626,7 @@ public class HomeView extends View implements Choreographer.FrameCallback {
     /** The list of every app (the overlay needs it; it is loaded with the favorites). */
     public void setAllApps(List<HomeApps.Item> all) {
         allApps = all;
+        if (!filter.isEmpty()) setFilter(filter);   // the search may be open: its list follows the new apps
     }
 
     private boolean portrait() {
@@ -717,7 +732,7 @@ public class HomeView extends View implements Choreographer.FrameCallback {
     private int hitFavorites(float x, float y) {
         if (favorites.isEmpty()) return -1;
         int rows = (int) Math.ceil(favorites.size() / (float) perRow);
-        float top = widgetRect.bottom + dp(16);
+        float top = favoritesTop();
         float bottom = noteTop - dp(24);
         float blockH = rows * rowH;
         float startY = top + Math.max(0, (bottom - top - blockH) / 2f);
@@ -768,9 +783,11 @@ public class HomeView extends View implements Choreographer.FrameCallback {
         if (col < 0 || col >= cols) return;
         int row = (int) ((y - top + allScroll) / cell);
         int index = row * cols + col;
-        if (index < 0 || index >= allApps.size()) return;
+        // The same list the grid drew: with a search, the index is the one of the filtered list.
+        List<HomeApps.Item> all = shown();
+        if (index < 0 || index >= all.size()) return;
         click.open();
-        HomeApps.open(activity, allApps.get(index));
+        HomeApps.open(activity, all.get(index));
         allOpen = false;
         invalidate();
         startAnimation();
@@ -801,15 +818,52 @@ public class HomeView extends View implements Choreographer.FrameCallback {
         long age = System.currentTimeMillis() - noticeAt;
         if (age > 5000) { noticeText = ""; return; }
         float alpha = age > 4000 ? 1 - (age - 4000) / 1000 : 1;
-        float tw = hint.measureText(noticeText) + dp(32);
-        float x = (w - tw) / 2, y = noteRect.top - dp(52);
+        hint.setTextSize(dp(13));
+        // The message is wrapped: a long one (the sync error, the ADB hint) used to run off both sides.
+        List<String> lines = wrap(noticeText, w - dp(80));
+        if (lines.size() > 6) {
+            lines = new ArrayList<>(lines.subList(0, 6));
+            lines.set(5, lines.get(5) + "…");
+        }
+        float lineH = dp(18);
+        float textW = 0;
+        for (String line : lines) textW = Math.max(textW, hint.measureText(line));
+        float tw = Math.min(w - dp(48), textW + dp(32));
+        float th = dp(20) + lines.size() * lineH;
+        float x = (w - tw) / 2, y = noteRect.top - dp(14) - th;
         panel.setColor(Ui.alpha(0xFF101828, 0.9f * alpha));
-        tmp.set(x, y, x + tw, y + dp(38));
+        tmp.set(x, y, x + tw, y + th);
         c.drawRoundRect(tmp, dp(19), dp(19), panel);
         hint.setColor(Ui.alpha(0xFFFFFFFF, alpha));   // the panel is dark in every theme
-        hint.setTextSize(dp(13));
-        c.drawText(noticeText, x + dp(16), y + dp(24), hint);
+        for (int i = 0; i < lines.size(); i++) {
+            c.drawText(lines.get(i), x + dp(16), y + dp(8) + (i + 1) * lineH, hint);
+        }
         hint.setTextSize(dp(15));
+    }
+
+    /** Breaks the text in lines that fit the width (the words are not cut when there is a space before). */
+    private List<String> wrap(String text, float maxWidth) {
+        List<String> out = new ArrayList<>();
+        for (String paragraph : text.split("\n", -1)) {
+            String rest = paragraph.trim();
+            if (rest.isEmpty()) {
+                out.add("");
+                continue;
+            }
+            while (!rest.isEmpty()) {
+                int n = hint.breakText(rest, true, maxWidth, null);
+                if (n <= 0) n = 1;
+                if (n < rest.length() && rest.charAt(n) != ' ') {
+                    int space = rest.lastIndexOf(' ', n);
+                    if (space > 0) n = space;
+                }
+                n = Math.min(n, rest.length());
+                String line = rest.substring(0, n).trim();
+                if (!line.isEmpty()) out.add(line);
+                rest = rest.substring(n).trim();
+            }
+        }
+        return out;
     }
 
     private String noticeText = "";

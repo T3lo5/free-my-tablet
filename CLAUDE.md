@@ -118,26 +118,37 @@ Then, in the code:
   a tablet with a keyboard).
 - **The quick note** is a real `EditText` (`HomeActivity`), put exactly on the panel the home screen draws, and it
   is saved in the Obsidian vault (`Vault`): the system's own folder picker (SAF), one Markdown file per day,
-  appended. Without AndroidX: `DocumentsContract` and the `ContentResolver` directly. Two traps: the tree URI is
-  the folder and the *document* URI is the folder as a document (`createDocument` wants the second one), and the
-  file is opened with `"rwt"` (`"wt"` does not exist).
+  appended. Without AndroidX: `DocumentsContract` and the `ContentResolver` directly. Three traps: the tree URI is
+  the folder and the *document* URI is the folder as a document (`createDocument` wants the second one); a new
+  file is opened with `"rwt"`, but an existing one **must** be opened with `"wa"` (`"rwt"` truncates and eats the
+  day's earlier notes; when the provider has no `"wa"`, read the file and write it again); and the name's prefix
+  is kept in `Prefs.notePrefix`, because translating it would split the day's notes after a language change.
 - **The sync button** (bottom left) does the git pull and the copy without going to Termux: the app writes a small
   script in the vault (the only place both can reach), asks Termux to run it, and reads the log it leaves. Termux
   needs two things, once: the `com.termux.permission.RUN_COMMAND` permission (the app asks the system) and
   `allow-external-apps=true` in `~/.config/termux/termux.properties` (the person types it in Termux). The
   arguments of the Termux service go as a **String array** (one argument each) and the service is started with
-  `startForegroundService` (Android 11 blocks a plain service start from the background). The script and its log
-  are excluded from the copy (the copy empties the vault: the log is being written while it runs).
+  `startForegroundService` (Android 11 blocks a plain service start from the background). **The vault is never
+  emptied**: the script keeps a manifest (`.freemy-sync-files`) of what it copied and deletes only the files that
+  the repo no longer has — the quick notes and the attachments made in Obsidian are not the repo's to delete. An
+  empty listing stops the run (a broken `find` would empty the vault), and the script, the log and the manifest
+  go into the local `.git/info/exclude` of both folders, so git does not see them. The
+  log carries the run's UUID, and the app only accepts the log with the mark of the run it started.
 - **The widget** (the slot under the clock) is picked in the system's own widget picker, so every widget of the
   tablet works. Ours is "Últimas notas": the last notes of the vault, a tap opens them in Obsidian
   (`obsidian://open?vault=…&file=…`). Two traps: a widget is drawn by the system, so the layout can only have the
   plain attributes (the colors and the sizes go through `setTextColor`/`setTextViewTextSize`), and the
   `AppWidgetHostView` has to be **measured** before it is laid out (without that, its own views stay with no size
-  and the widget shows an empty panel).
+  and the widget shows an empty panel). The texts of our widget go through `Ui.tr`, never through `getString`
+  (the app has one `values/` folder, in Portuguese; and the widget's process is older than the language choice,
+  so the widget calls `Ui.applyLanguage()` when it is built). Our notes widget lives in the main process while
+  the note is saved in `:home`: `Vault.notifyChanged` sends `io.freemytablet.NOTES_CHANGED`, and `HomeReceiver`
+  drops the cache and redraws (without that the widget keeps showing yesterday's list).
 - **The theme** (automatic, light, dark) really changes the background: `Sky.light`/`Sky.dark` instead of the sky
   of the hour.
 - **The weather card** (top right): the temperature, the symbol and the city, from Open-Meteo (`Weather`), with a
-  switch in the settings.
+  switch in the settings. The temperature is kept in Celsius and converted when it is drawn, so changing the unit
+  shows the right number without waiting for the next fetch.
 - **The home screen switch does not need the ADB.** From Android 10 on, the home app is a role the system gives
   (`RoleManager.createRequestRoleIntent`): the system's own dialog, no root, no keys. **The manifest has to declare
   the HOME intent in `<queries>`** — without it the system cannot see the other home apps and the role is never
@@ -153,7 +164,8 @@ Then, in the code:
 - `HomeMode` runs every switch as a background job (`ModeJob`) in the main process; the UI is in the `:home` process.
   `Watchdog` goes back to the stock home screen after 3 crashes in 5 minutes.
 - On-screen text: `Ui.tr("pt", "en")`, with the Spanish in `Spanish.java` (keyed by the English); text built at
-  runtime uses `Ui.tr(pt, en, es)`. Add all three. Comments in English, short, only where the why isn't obvious.
+  runtime uses `Ui.tr(pt, en, es)`. Add all three. Every literal key has its Spanish case; a message with a
+  number in the middle passes the Spanish as the third argument (the switch cannot see the number). Comments in English, short, only where the why isn't obvious.
 - Settings come from `config.properties` through the generated `out/gen/io/freemytablet/Config.java` (never edit
   that). What the person changes on the tablet (`Prefs`: the apps on the home screen, the vault, the apps to turn
   off, the language, the theme) wins over those first values.

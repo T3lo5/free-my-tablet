@@ -35,6 +35,12 @@ final class Vault {
     private static List<Note> cache;
     private static long cacheAt;
 
+    /**
+     * The names the note of the day had before the prefix was kept in the settings. Looking for them keeps the
+     * notes of yesterday's language in the same file after a language change.
+     */
+    private static final String[] OLD_NOTE_PREFIXES = {"Nota rápida ", "Quick note "};
+
     /** Asks the person for the folder (the system's picker). The answer comes back in onActivityResult. */
     static void pick(Activity a) {
         Intent intent = new Intent(Build.VERSION.SDK_INT >= 21 ? Intent.ACTION_OPEN_DOCUMENT_TREE : Intent.ACTION_GET_CONTENT);
@@ -62,8 +68,10 @@ final class Vault {
             Uri root = Uri.parse(tree);
             String rootId = DocumentsContract.getTreeDocumentId(root);
             ContentResolver resolver = c.getContentResolver();
-            String today = new SimpleDateFormat("yyyy-MM-dd", Locale.US).format(new Date());
-            String name = Ui.tr("Nota rápida ", "Quick note ") + today + ".md";
+            // The path of the day: the file that already exists wins, even when its name came from another language.
+            String path = todayPath(c);
+            int slash = path.lastIndexOf('/');
+            String name = slash < 0 ? path : path.substring(slash + 1);
             // The folder of the note (inside the vault), made when it does not exist yet.
             String folderId = rootId;
             String sub = Prefs.noteFolder();
@@ -78,21 +86,122 @@ final class Vault {
                 file = DocumentsContract.createDocument(resolver, parent, "text/markdown", name);
                 if (file == null) return null;
             }
-            try (OutputStream out = resolver.openOutputStream(file, "rwt")) {
-                if (out == null) return null;
-                String text = fresh ? "" : "\n\n";
-                out.write(text.getBytes(StandardCharsets.UTF_8));
-                out.write(("# " + new SimpleDateFormat("HH:mm", Locale.getDefault()).format(new Date()) + "\n\n")
-                        .getBytes(StandardCharsets.UTF_8));
-                out.write(note.trim().getBytes(StandardCharsets.UTF_8));
-                out.write("\n".getBytes(StandardCharsets.UTF_8));
+            String block = (fresh ? "" : "\n\n")
+                    + "# " + new SimpleDateFormat("HH:mm", Locale.getDefault()).format(new Date()) + "\n\n"
+                    + note.trim() + "\n";
+            if (fresh) {
+                writeText(resolver, file, block);
+            } else {
+                // The file has the notes of the day: append, never truncate.
+                append(resolver, file, block);
             }
+            cache = null;
+            notifyChanged(c);
             return name;
         } catch (Exception e) {
             AppLog.w("could not save the note: " + e);
             return null;
         } finally {
             cache = null;   // the notes changed: the widget and the search have to look again
+        }
+    }
+
+    /**
+     * The name of the note of the day. The prefix is kept in the settings the first time, so changing the
+     * language does not split the day's notes between two files.
+     */
+    static String noteName(String prefix, String day) {
+        return prefix + day + ".md";
+    }
+
+    private static String notePrefix(Context c) {
+        String prefix = Prefs.notePrefix();
+        if (!prefix.isEmpty()) return prefix;
+        prefix = Ui.tr("Nota rápida ", "Quick note ");
+        Prefs.setNotePrefix(prefix);
+        return prefix;
+    }
+
+    /**
+     * The path of the note of the day inside the vault (the folder included). When a note of today already
+     * exists with the name of an older language, that name is kept: the day's notes stay in one file.
+     */
+    static String todayPath(Context c) {
+        String today = new SimpleDateFormat("yyyy-MM-dd", Locale.US).format(new Date());
+        String name = noteName(notePrefix(c), today);
+        String folder = Prefs.noteFolder();
+        String tree = Prefs.vault();
+        if (!tree.isEmpty()) {
+            try {
+                Uri root = Uri.parse(tree);
+                String rootId = DocumentsContract.getTreeDocumentId(root);
+                ContentResolver resolver = c.getContentResolver();
+                // Only look: a folder that is not there yet is made by save (and by ensure).
+                String folderId = folder.isEmpty() ? rootId
+                        : subFolder(resolver, root, rootId, folder, false);
+                if (folderId != null && find(resolver, root, folderId, name) == null) {
+                    for (String old : OLD_NOTE_PREFIXES) {
+                        String other = noteName(old, today);
+                        if (!other.equals(name) && find(resolver, root, folderId, other) != null) {
+                            name = other;
+                            break;
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                AppLog.w("could not look for the note of the day: " + e.getMessage());
+            }
+        }
+        return folder.isEmpty() ? name : folder + "/" + name;
+    }
+
+    /** The notes changed (a note was saved): the widget and the search have to look again. */
+    static void invalidate() {
+        cache = null;
+    }
+
+    /** Asks the main process (where the widget lives) to forget its copy of the notes and redraw the widget. */
+    private static void notifyChanged(Context c) {
+        try {
+            c.sendBroadcast(new Intent(HomeReceiver.NOTES_CHANGED).setPackage(c.getPackageName()));
+        } catch (RuntimeException e) {
+            AppLog.w("could not tell the widget about the note: " + e.getMessage());
+        }
+    }
+
+    /** Writes the whole file (a new note, or the fallback when the provider has no append mode). */
+    private static void writeText(ContentResolver resolver, Uri file, String text) throws IOException {
+        try (OutputStream out = resolver.openOutputStream(file, "rwt")) {
+            if (out == null) throw new IOException("no output stream");
+            out.write(text.getBytes(StandardCharsets.UTF_8));
+        }
+    }
+
+    /**
+     * Appends to the file. Some folder providers do not support "wa": then the old text is read and the file is
+     * written again with the new block at the end.
+     */
+    private static void append(ContentResolver resolver, Uri file, String text) throws IOException {
+        try (OutputStream out = resolver.openOutputStream(file, "wa")) {
+            if (out == null) throw new IOException("no append stream");
+            out.write(text.getBytes(StandardCharsets.UTF_8));
+            return;
+        } catch (IOException | RuntimeException e) {
+            AppLog.w("append not supported, rewriting the note: " + e.getMessage());
+        }
+        String old = readText(resolver, file);
+        writeText(resolver, file, old + text);
+    }
+
+    /** The text of a document (the note of the day, before it is written again). */
+    private static String readText(ContentResolver resolver, Uri file) throws IOException {
+        try (InputStream in = resolver.openInputStream(file)) {
+            if (in == null) return "";
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            byte[] buffer = new byte[4096];
+            int n;
+            while ((n = in.read(buffer)) > 0) out.write(buffer, 0, n);
+            return new String(out.toByteArray(), StandardCharsets.UTF_8);
         }
     }
 
@@ -136,12 +245,22 @@ final class Vault {
 
     private static String subFolder(ContentResolver resolver, Uri tree, String documentId, String path)
             throws IOException {
+        return subFolder(resolver, tree, documentId, path, true);
+    }
+
+    /**
+     * The folder inside the vault, or null. With create=false it is only looked for: the settings and the note of
+     * the day must not make folders just by being read.
+     */
+    private static String subFolder(ContentResolver resolver, Uri tree, String documentId, String path,
+            boolean create) throws IOException {
         String current = documentId;
         for (String part : path.split("/")) {
             part = part.trim();
             if (part.isEmpty()) continue;
             Uri child = find(resolver, tree, current, part);
             if (child == null) {
+                if (!create) return null;
                 Uri parent = DocumentsContract.buildDocumentUriUsingTree(tree, current);
                 child = DocumentsContract.createDocument(resolver, parent,
                         DocumentsContract.Document.MIME_TYPE_DIR, part);
